@@ -8,73 +8,86 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
+    --background: 0 0% 96.1%; /* Light Gray */
+    --foreground: 0 0% 3.9%; /* Near Black */
+
+    --card: 0 0% 100%; /* White */
     --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
+
+    --popover: 0 0% 100%; /* White */
     --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
+
+    --primary: 180 100% 25.1%; /* Teal */
+    --primary-foreground: 0 0% 98%; /* Near White */
+
+    --secondary: 0 0% 92%; /* Slightly darker gray than background */
+    --secondary-foreground: 0 0% 9%; /* Dark Gray */
+
+    --muted: 0 0% 92%; /* Match secondary for subtle elements */
+    --muted-foreground: 0 0% 45.1%; /* Medium Gray */
+
+    --accent: 180 70% 40%; /* Lighter Teal for hover/focus */
+    --accent-foreground: 0 0% 98%; /* Near White */
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+
+    --border: 0 0% 89.8%; /* Light Gray border */
+    --input: 0 0% 100%; /* White input background */
+    --ring: 180 100% 25.1%; /* Teal for focus rings */
+
     --radius: 0.5rem;
+
+    --chart-1: 180 70% 40%;
+    --chart-2: 180 60% 50%;
+    --chart-3: 180 50% 60%;
+    --chart-4: 180 40% 70%;
+    --chart-5: 180 30% 80%;
+
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary: 180 100% 25.1%; /* Teal */
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 180 70% 90%; /* Very light teal for sidebar accent */
+    --sidebar-accent-foreground: 180 100% 15%; /* Darker Teal */
+    --sidebar-border: 0 0% 89.8%;
+    --sidebar-ring: 180 100% 25.1%; /* Teal */
   }
+
   .dark {
+    /* Keeping default dark mode for now, can be adjusted later */
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
     --card: 0 0% 3.9%;
     --card-foreground: 0 0% 98%;
     --popover: 0 0% 3.9%;
     --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
+    --primary: 180 70% 50%; /* Brighter Teal for dark mode */
     --primary-foreground: 0 0% 9%;
     --secondary: 0 0% 14.9%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 14.9%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
+    --accent: 180 70% 30%; /* Darker Teal Accent for dark */
     --accent-foreground: 0 0% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    --ring: 180 70% 50%; /* Brighter Teal Ring */
+    --chart-1: 180 70% 50%;
+    --chart-2: 180 60% 60%;
+    --chart-3: 180 50% 70%;
+    --chart-4: 180 40% 80%;
+    --chart-5: 180 30% 90%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary: 180 70% 50%; /* Brighter Teal for dark sidebar primary */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent: 180 70% 20%; /* Darker Teal for dark sidebar accent */
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-ring: 180 70% 50%; /* Brighter Teal Ring */
   }
 }
 
@@ -84,5 +97,12 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    /* Apply sans-serif font globally */
+    font-family: var(--font-geist-sans), sans-serif;
   }
+}
+
+/* Apply sans-serif font specifically using Geist */
+html {
+  font-family: var(--font-geist-sans), sans-serif;
 }
