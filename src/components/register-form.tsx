@@ -56,6 +56,8 @@ export default function RegisterForm() {
 
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsLoading(true);
+    form.clearErrors(); // Clear previous errors
+
     try {
        // Exclude confirmPassword before sending to API
       const { confirmPassword, ...payload } = values;
@@ -66,10 +68,35 @@ export default function RegisterForm() {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      // Try parsing the JSON regardless of the status code initially
+      let data;
+      try {
+          data = await response.json();
+      } catch (jsonError) {
+          // If JSON parsing fails, it's likely the HTML error page
+          console.error('API did not return JSON:', jsonError);
+          // Check for common HTML responses
+           const textResponse = await response.text(); // Get the raw response text
+           console.error('Raw API response:', textResponse);
+           if (textResponse.toLowerCase().includes('<!doctype html')) {
+               throw new Error('Server returned an HTML error page instead of JSON. Check server logs.');
+           } else {
+                throw new Error('Failed to parse server response. Unexpected format.');
+           }
+      }
+
 
       if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
+        // If API returned JSON error details (e.g., validation errors)
+        if (data.errors) {
+             Object.entries(data.errors as Record<string, string[]>).forEach(([field, messages]) => {
+                 form.setError(field as keyof z.infer<typeof registerSchema>, {
+                     type: 'server',
+                     message: messages.join(', '),
+                 });
+             });
+        }
+        throw new Error(data.message || `Registration failed with status: ${response.status}`);
       }
 
       toast({
@@ -86,6 +113,13 @@ export default function RegisterForm() {
         description: error.message || 'An unexpected error occurred.',
         variant: 'destructive',
       });
+       // Set a general form error if it's not field-specific
+       if (!form.formState.errors.username && !form.formState.errors.password && !form.formState.errors.confirmPassword && !form.formState.errors.role) {
+          form.setError('root.serverError', {
+             type: 'server',
+             message: error.message || 'An unexpected error occurred.'
+          });
+       }
     } finally {
       setIsLoading(false);
     }
@@ -157,6 +191,12 @@ export default function RegisterForm() {
             </FormItem>
           )}
         />
+         {/* Display root level errors */}
+         {form.formState.errors.root?.serverError && (
+             <p className="text-sm font-medium text-destructive">
+                 {form.formState.errors.root.serverError.message}
+             </p>
+         )}
         <Button type="submit" className="w-full" disabled={isLoading}>
           <UserPlus className="mr-2 h-4 w-4" />
           {isLoading ? 'Registering...' : 'Register'}
