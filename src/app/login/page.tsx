@@ -127,13 +127,13 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
-           {/* Optional: Link to registration page */}
-           {/* <p className="mt-4 text-center text-sm text-muted-foreground">
+           {/* Link to registration page */}
+           <p className="mt-4 text-center text-sm text-muted-foreground">
              Don't have an account?{' '}
              <Link href="/register" className="underline hover:text-primary">
                Register here
              </Link>
-           </p> */}
+           </p>
         </CardContent>
       </Card>
     </div>
