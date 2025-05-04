@@ -18,20 +18,25 @@ import { PackageSearch, AlertCircle } from 'lucide-react';
 
 
 export default function SearchResults() {
-  const { userRole } = useAuthStore(); // Get user role
+  const { isAuthenticated } = useAuthStore(); // Get authentication status
+  // Use selectors to get only the state needed, prevents unnecessary re-renders
   const filteredProducts = useProductStore((state) => state.filteredProducts);
   const searchTerm = useProductStore((state) => state.searchTerm);
-  const products = useProductStore((state) => state.products); // Get all products for initial load check
+  const products = useProductStore((state) => state.products); // Still needed for initial load check
 
-  // Effect to re-filter products when the component mounts or products/searchTerm change
+  // Effect to re-filter products when the component mounts or relevant state changes
+  // Only run filter if authenticated
   React.useEffect(() => {
-    if (userRole !== 'guest') {
+    if (isAuthenticated) {
        useProductStore.getState().filterProducts();
+    } else {
+        // Ensure results are cleared if user logs out while viewing
+        useProductStore.getState().clearSearchAndResults();
     }
-  }, [userRole, products, searchTerm]); // Depend on userRole, products, and searchTerm
+  }, [isAuthenticated, products, searchTerm]); // Depend on auth status, products list, and search term
 
-  // Handle guest state
-  if (userRole === 'guest') {
+  // Handle non-authenticated state
+  if (!isAuthenticated) {
     return (
         <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground rounded-md border">
             <AlertCircle className="h-8 w-8 mb-2" />
@@ -40,6 +45,7 @@ export default function SearchResults() {
     );
   }
 
+  // At this point, user is authenticated
   const showNoResultsMessage = filteredProducts.length === 0 && !!searchTerm;
   const showInitialMessage = filteredProducts.length === 0 && !searchTerm;
 
@@ -51,7 +57,7 @@ export default function SearchResults() {
             ? `Showing ${filteredProducts.length} product(s).`
             : searchTerm
             ? `No products found for "${searchTerm}".`
-            : 'Enter a search term or add products.'}
+            : 'Enter a search term or add products (if admin).'}
         </TableCaption>
         <TableHeader className="sticky top-0 bg-secondary z-10">
           <TableRow>

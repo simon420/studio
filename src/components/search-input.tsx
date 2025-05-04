@@ -9,13 +9,14 @@ import { Search } from 'lucide-react';
 export default function SearchInput() {
   const searchTerm = useProductStore((state) => state.searchTerm);
   const setSearchTerm = useProductStore((state) => state.setSearchTerm);
-  const { userRole } = useAuthStore(); // Get user role
+  const { isAuthenticated } = useAuthStore(); // Get authentication status
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
   };
 
-  const isDisabled = userRole === 'guest';
+  // Disable input if user is not authenticated
+  const isDisabled = !isAuthenticated;
 
   return (
     <div className="relative">
@@ -26,7 +27,7 @@ export default function SearchInput() {
          value={searchTerm}
          onChange={handleInputChange}
          className="pl-10 w-full" // Add padding for the icon
-         disabled={isDisabled} // Disable input if user is guest
+         disabled={isDisabled} // Disable input if not authenticated
        />
     </div>
   );

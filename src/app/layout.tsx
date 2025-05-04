@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'; // Using Inter as a common sans-serif 
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
+// import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider - Not needed with Zustand directly
 
 // Keep Geist fonts if preferred, but ensure a sans-serif is default
 const geistSans = Geist({
@@ -30,8 +31,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`} // Use font-sans utility class
       >
-        {children}
-        <Toaster /> {/* Add Toaster here */}
+          {/* No explicit AuthProvider needed when using Zustand directly like this */}
+          {children}
+          <Toaster /> {/* Add Toaster here */}
       </body>
     </html>
   );
