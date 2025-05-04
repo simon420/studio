@@ -15,6 +15,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { PackageSearch, AlertCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
 
 
 export default function SearchResults() {
@@ -35,72 +36,77 @@ export default function SearchResults() {
     }
   }, [isAuthenticated, products, searchTerm]); // Depend on auth status, products list, and search term
 
-  // Handle non-authenticated state
-  if (!isAuthenticated) {
-    return (
-        <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground rounded-md border">
-            <AlertCircle className="h-8 w-8 mb-2" />
-            <p>Log in to see product results.</p>
-        </div>
-    );
-  }
-
-  // At this point, user is authenticated
   const showNoResultsMessage = filteredProducts.length === 0 && !!searchTerm;
   const showInitialMessage = filteredProducts.length === 0 && !searchTerm;
 
   return (
-    <ScrollArea className="h-[400px] rounded-md border">
-      <Table>
-        <TableCaption className="py-4">
-          {filteredProducts.length > 0
-            ? `Showing ${filteredProducts.length} product(s).`
-            : searchTerm
-            ? `No products found for "${searchTerm}".`
-            : 'Enter a search term or add products (if admin).'}
-        </TableCaption>
-        <TableHeader className="sticky top-0 bg-secondary z-10">
-          <TableRow>
-            <TableHead className="w-[40%]">Name</TableHead>
-            <TableHead className="w-[20%]">Code</TableHead>
-            <TableHead className="w-[20%] text-right">Price</TableHead>
-            <TableHead className="w-[20%]">Server</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {showNoResultsMessage ? (
-             <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                     <PackageSearch className="h-8 w-8" />
-                     <span>No results found for "{searchTerm}".</span>
-                  </div>
-                </TableCell>
-             </TableRow>
-          ) : showInitialMessage ? (
-             <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                    Enter a search term above, or add a product (if admin).
-                </TableCell>
-             </TableRow>
-          ) : (
-             filteredProducts.map((product) => (
-               <TableRow key={product.id}>
-                 <TableCell className="font-medium">{product.name}</TableCell>
-                 <TableCell>{product.code}</TableCell>
-                 <TableCell className="text-right">
-                   ${product.price.toFixed(2)}
-                 </TableCell>
-                 <TableCell>
-                   <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
-                     {product.serverId || 'N/A'}
-                   </Badge>
-                 </TableCell>
-               </TableRow>
-             ))
-          )}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+     <Card>
+        <CardHeader>
+          <CardTitle>Search Results</CardTitle>
+        </CardHeader>
+        <CardContent>
+           {/* Handle non-authenticated state */}
+           {!isAuthenticated ? (
+             <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground rounded-md border">
+               <AlertCircle className="h-8 w-8 mb-2" />
+               <p>Log in to see product results.</p>
+             </div>
+           ) : (
+             // Render table when authenticated
+             <ScrollArea className="h-[400px] rounded-md border">
+               <Table>
+                 <TableCaption className="py-4">
+                   {filteredProducts.length > 0
+                     ? `Showing ${filteredProducts.length} product(s).`
+                     : searchTerm
+                     ? `No products found for "${searchTerm}".`
+                     : 'Enter a search term or add products (if admin).'}
+                 </TableCaption>
+                 <TableHeader className="sticky top-0 bg-secondary z-10">
+                   <TableRow>
+                     <TableHead className="w-[40%]">Name</TableHead>
+                     <TableHead className="w-[20%]">Code</TableHead>
+                     <TableHead className="w-[20%] text-right">Price</TableHead>
+                     <TableHead className="w-[20%]">Server</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {showNoResultsMessage ? (
+                     <TableRow>
+                       <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                         <div className="flex flex-col items-center justify-center gap-2">
+                           <PackageSearch className="h-8 w-8" />
+                           <span>No results found for "{searchTerm}".</span>
+                         </div>
+                       </TableCell>
+                     </TableRow>
+                   ) : showInitialMessage ? (
+                     <TableRow>
+                       <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                         Enter a search term above, or add a product (if admin).
+                       </TableCell>
+                     </TableRow>
+                   ) : (
+                     filteredProducts.map((product) => (
+                       <TableRow key={product.id}>
+                         <TableCell className="font-medium">{product.name}</TableCell>
+                         <TableCell>{product.code}</TableCell>
+                         <TableCell className="text-right">
+                           ${product.price.toFixed(2)}
+                         </TableCell>
+                         <TableCell>
+                           <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
+                             {product.serverId || 'N/A'}
+                           </Badge>
+                         </TableCell>
+                       </TableRow>
+                     ))
+                   )}
+                 </TableBody>
+               </Table>
+             </ScrollArea>
+           )}
+        </CardContent>
+     </Card>
   );
 }
