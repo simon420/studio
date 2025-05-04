@@ -58,36 +58,41 @@ export default function RegisterForm() {
     setIsLoading(true);
     form.clearErrors(); // Clear previous errors
 
+    let response: Response | null = null; // Define response outside try block
+
     try {
        // Exclude confirmPassword before sending to API
       const { confirmPassword, ...payload } = values;
 
-      const response = await fetch('/api/auth/register', {
+      response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      // Try parsing the JSON regardless of the status code initially
+      // Read the response body as text first
+      const responseText = await response.text();
       let data;
+
       try {
-          data = await response.json();
+        // Try parsing the text as JSON
+        data = JSON.parse(responseText);
       } catch (jsonError) {
-          // If JSON parsing fails, it's likely the HTML error page
-          console.error('API did not return JSON:', jsonError);
-          // Check for common HTML responses
-           const textResponse = await response.text(); // Get the raw response text
-           console.error('Raw API response:', textResponse);
-           if (textResponse.toLowerCase().includes('<!doctype html')) {
-               throw new Error('Server returned an HTML error page instead of JSON. Check server logs.');
-           } else {
-                throw new Error('Failed to parse server response. Unexpected format.');
-           }
+        // If JSON parsing fails, check if it's HTML or just malformed
+        console.error('API did not return valid JSON:', jsonError);
+        console.error('Raw API response text:', responseText); // Log the raw text
+        if (responseText.trim().toLowerCase().startsWith('<!doctype html')) {
+             throw new Error('Server returned an HTML error page instead of JSON. Check server logs.');
+        } else {
+             // Throw a more specific error including the response status if available
+             const statusText = response.statusText ? ` (${response.statusText})` : '';
+             throw new Error(`Failed to parse server response (Status: ${response.status}${statusText}). Response was not valid JSON.`);
+        }
       }
 
-
+      // Now that we have successfully parsed JSON (data), check response.ok
       if (!response.ok) {
-        // If API returned JSON error details (e.g., validation errors)
+        // Handle known API errors (like validation errors or conflicts)
         if (data.errors) {
              Object.entries(data.errors as Record<string, string[]>).forEach(([field, messages]) => {
                  form.setError(field as keyof z.infer<typeof registerSchema>, {
@@ -96,9 +101,11 @@ export default function RegisterForm() {
                  });
              });
         }
-        throw new Error(data.message || `Registration failed with status: ${response.status}`);
+         // Use the message from the parsed JSON error response
+         throw new Error(data.message || `Registration failed with status: ${response.status}`);
       }
 
+      // --- Success Case ---
       toast({
         title: 'Registration Successful',
         description: 'You can now log in with your credentials.',
@@ -110,7 +117,8 @@ export default function RegisterForm() {
       console.error('Registration error:', error);
       toast({
         title: 'Registration Failed',
-        description: error.message || 'An unexpected error occurred.',
+        // Check if response exists and wasn't OK for a more specific default message
+        description: error.message || (response && !response.ok ? `Server responded with status ${response.status}` : 'An unexpected error occurred.'),
         variant: 'destructive',
       });
        // Set a general form error if it's not field-specific
