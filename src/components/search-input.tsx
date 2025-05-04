@@ -3,25 +3,30 @@
 import * as React from 'react';
 import { Input } from '@/components/ui/input';
 import { useProductStore } from '@/store/product-store';
+import { useAuthStore } from '@/store/auth-store'; // Import auth store
 import { Search } from 'lucide-react';
 
 export default function SearchInput() {
   const searchTerm = useProductStore((state) => state.searchTerm);
   const setSearchTerm = useProductStore((state) => state.setSearchTerm);
+  const { userRole } = useAuthStore(); // Get user role
 
   const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
   };
 
+  const isDisabled = userRole === 'guest';
+
   return (
     <div className="relative">
-       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+       <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
        <Input
          type="search"
-         placeholder="Search by name or code..."
+         placeholder={isDisabled ? "Log in to search..." : "Search by name or code..."}
          value={searchTerm}
          onChange={handleInputChange}
          className="pl-10 w-full" // Add padding for the icon
+         disabled={isDisabled} // Disable input if user is guest
        />
     </div>
   );

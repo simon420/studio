@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useProductStore } from '@/store/product-store';
+import { useAuthStore } from '@/store/auth-store'; // Import auth store
 import {
   Table,
   TableBody,
@@ -13,19 +14,34 @@ import {
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PackageSearch } from 'lucide-react';
+import { PackageSearch, AlertCircle } from 'lucide-react';
 
 
 export default function SearchResults() {
+  const { userRole } = useAuthStore(); // Get user role
   const filteredProducts = useProductStore((state) => state.filteredProducts);
   const searchTerm = useProductStore((state) => state.searchTerm);
+  const products = useProductStore((state) => state.products); // Get all products for initial load check
 
-  // Effect to re-filter products when the component mounts or products change
-  // This ensures the initial state or changes from adding products are reflected.
+  // Effect to re-filter products when the component mounts or products/searchTerm change
   React.useEffect(() => {
-    useProductStore.getState().filterProducts();
-  }, []); // Empty dependency array ensures it runs once on mount
+    if (userRole !== 'guest') {
+       useProductStore.getState().filterProducts();
+    }
+  }, [userRole, products, searchTerm]); // Depend on userRole, products, and searchTerm
 
+  // Handle guest state
+  if (userRole === 'guest') {
+    return (
+        <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground rounded-md border">
+            <AlertCircle className="h-8 w-8 mb-2" />
+            <p>Log in to see product results.</p>
+        </div>
+    );
+  }
+
+  const showNoResultsMessage = filteredProducts.length === 0 && !!searchTerm;
+  const showInitialMessage = filteredProducts.length === 0 && !searchTerm;
 
   return (
     <ScrollArea className="h-[400px] rounded-md border">
@@ -46,13 +62,19 @@ export default function SearchResults() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {filteredProducts.length === 0 && searchTerm ? (
+          {showNoResultsMessage ? (
              <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                   <div className="flex flex-col items-center justify-center gap-2">
                      <PackageSearch className="h-8 w-8" />
-                     <span>No results found.</span>
+                     <span>No results found for "{searchTerm}".</span>
                   </div>
+                </TableCell>
+             </TableRow>
+          ) : showInitialMessage ? (
+             <TableRow>
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                    Enter a search term above, or add a product (if admin).
                 </TableCell>
              </TableRow>
           ) : (

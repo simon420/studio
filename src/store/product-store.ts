@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Product } from '@/lib/types';
+import { useAuthStore } from './auth-store'; // Import auth store
 
 interface ProductState {
   searchTerm: string;
@@ -7,9 +8,8 @@ interface ProductState {
   filteredProducts: Product[];
   setSearchTerm: (term: string) => void;
   addProduct: (product: Omit<Product, 'id'>) => void;
-  // Note: In a real distributed system, fetching/searching would be async operations
-  // calling APIs on different servers. Here, we simulate it locally.
   filterProducts: () => void;
+  clearSearchResults: () => void; // New action to clear results
 }
 
 // Simulate generating unique IDs - in a real app, this would likely come from a DB or server
@@ -32,6 +32,12 @@ export const useProductStore = create<ProductState>((set, get) => ({
   },
 
   addProduct: (productData) => {
+    // Ensure only admin can add - although UI should prevent this, add a safeguard
+    if (useAuthStore.getState().userRole !== 'admin') {
+        console.warn("Attempted to add product without admin privileges.");
+        return;
+    }
+
     const newProduct: Product = {
       ...productData,
       // Simple ID generation for this simulation
@@ -45,9 +51,16 @@ export const useProductStore = create<ProductState>((set, get) => ({
   },
 
   filterProducts: () => {
+    // Prevent filtering if user is guest
+    if (useAuthStore.getState().userRole === 'guest') {
+        set({ filteredProducts: [] });
+        return;
+    }
+
     const { products, searchTerm } = get();
     if (!searchTerm.trim()) {
-      set({ filteredProducts: products }); // Show all products if search is empty
+      // Show all products if search is empty (and user is logged in)
+      set({ filteredProducts: products });
       return;
     }
 
@@ -64,7 +77,27 @@ export const useProductStore = create<ProductState>((set, get) => ({
     });
     set({ filteredProducts: filtered });
   },
+
+  clearSearchResults: () => {
+      set({ searchTerm: '', filteredProducts: [] });
+  }
 }));
 
-// Initialize filtered products on load
-useProductStore.getState().filterProducts();
+// Subscribe to auth store changes to clear product state on logout
+useAuthStore.subscribe((state, prevState) => {
+    // If user changes from logged-in (admin/user) to guest
+    if (prevState.userRole !== 'guest' && state.userRole === 'guest') {
+        useProductStore.getState().clearSearchResults();
+    }
+    // If user logs in (from guest to admin/user), trigger initial filter
+    else if (prevState.userRole === 'guest' && state.userRole !== 'guest') {
+         useProductStore.getState().filterProducts();
+    }
+});
+
+
+// Initialize filtered products based on initial auth state
+const initialAuthRole = useAuthStore.getState().userRole;
+if (initialAuthRole !== 'guest') {
+    useProductStore.getState().filterProducts();
+}
