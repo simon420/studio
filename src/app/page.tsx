@@ -12,6 +12,7 @@ import ProductInputForm from '@/components/product-input-form';
 // import RegisterForm from '@/components/register-form'; 
 import SearchResults from '@/components/search-results';
 import AuthControls from '@/components/auth-controls';
+import AdminProductsList from '@/components/admin-products-list'; // Import the new component
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -68,14 +69,24 @@ export default function Home() {
           </Card>
 
           {userRole === 'admin' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Add New Product</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProductInputForm />
-              </CardContent>
-            </Card>
+            <>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Add New Product</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ProductInputForm />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>My Added Products</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <AdminProductsList />
+                </CardContent>
+              </Card>
+            </>
           )}
 
           {userRole === 'user' && (
