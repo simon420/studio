@@ -13,21 +13,19 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { PackagePlus, Loader2 } from 'lucide-react'; // Changed Icon
+import { Input } from '@/components/ui/input'; // Import Input
+import { PackagePlus, Loader2, Search } from 'lucide-react';
 
 export default function AdminProductsList() {
   const { uid, isLoading: authIsLoading } = useAuthStore();
   const products = useProductStore((state) => state.products);
   const fetchProductsFromFirestore = useProductStore((state) => state.fetchProductsFromFirestore);
   
-  // Local loading state for this component's specific data needs
   const [isLoadingProducts, setIsLoadingProducts] = React.useState(true);
+  const [adminSearchTerm, setAdminSearchTerm] = React.useState(''); // State for admin search
 
   React.useEffect(() => {
-    // Fetch products if not already fetched or if auth state is resolved
     if (!authIsLoading && uid) {
-        // If products are already in store, use them, otherwise trigger a fetch.
-        // This check avoids redundant fetches if products are already globally loaded.
         if (products.length === 0) {
             setIsLoadingProducts(true);
             fetchProductsFromFirestore().finally(() => setIsLoadingProducts(false));
@@ -39,10 +37,28 @@ export default function AdminProductsList() {
     }
   }, [authIsLoading, uid, fetchProductsFromFirestore, products.length]);
 
-  const adminProducts = React.useMemo(() => {
+  const handleAdminSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setAdminSearchTerm(event.target.value);
+  };
+
+  const filteredAdminProducts = React.useMemo(() => {
     if (!uid || products.length === 0) return [];
-    return products.filter((product) => product.addedByUid === uid);
-  }, [uid, products]);
+    
+    let userProducts = products.filter((product) => product.addedByUid === uid);
+
+    if (!adminSearchTerm.trim()) {
+      return userProducts;
+    }
+
+    const lowerCaseSearchTerm = adminSearchTerm.toLowerCase().split(' ').filter(term => term);
+    return userProducts.filter((product) => {
+      const nameLower = product.name.toLowerCase();
+      const codeString = product.code.toString();
+      return lowerCaseSearchTerm.every(term =>
+        nameLower.includes(term) || codeString.includes(term)
+      );
+    });
+  }, [uid, products, adminSearchTerm]);
 
   if (authIsLoading || isLoadingProducts) {
     return (
@@ -54,48 +70,65 @@ export default function AdminProductsList() {
   }
 
   if (!uid) {
-    // Should not happen if page.tsx handles auth correctly, but as a safeguard
     return <p className="text-muted-foreground text-center">Could not identify admin user.</p>;
   }
 
   return (
-    <ScrollArea className="h-[300px] rounded-md border">
-      <Table>
-        <TableCaption className="py-4">
-          {adminProducts.length > 0
-            ? `You have added ${adminProducts.length} product(s).`
-            : 'You have not added any products yet.'}
-        </TableCaption>
-        <TableHeader className="sticky top-0 bg-secondary z-10">
-          <TableRow>
-            <TableHead className="w-[50%]">Name</TableHead>
-            <TableHead className="w-[25%]">Code</TableHead>
-            <TableHead className="w-[25%] text-right">Price</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {adminProducts.length === 0 ? (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="Search your products by name or code..."
+          value={adminSearchTerm}
+          onChange={handleAdminSearchChange}
+          className="pl-10 w-full"
+        />
+      </div>
+      <ScrollArea className="h-[260px] rounded-md border"> {/* Adjusted height for search bar */}
+        <Table>
+          <TableCaption className="py-4">
+            {filteredAdminProducts.length > 0
+              ? `Showing ${filteredAdminProducts.length} of your product(s).`
+              : adminSearchTerm
+              ? `No products found for "${adminSearchTerm}".`
+              : 'You have not added any products yet.'}
+          </TableCaption>
+          <TableHeader className="sticky top-0 bg-secondary z-10">
             <TableRow>
-              <TableCell colSpan={3} className="h-24 text-center">
-                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                  <PackagePlus className="h-8 w-8" /> 
-                  <span>No products added by you.</span>
-                </div>
-              </TableCell>
+              <TableHead className="w-[50%]">Name</TableHead>
+              <TableHead className="w-[25%]">Code</TableHead>
+              <TableHead className="w-[25%] text-right">Price</TableHead>
             </TableRow>
-          ) : (
-            adminProducts.map((product) => (
-              <TableRow key={product.id}>
-                <TableCell className="font-medium">{product.name}</TableCell>
-                <TableCell>{product.code}</TableCell>
-                <TableCell className="text-right">
-                  ${product.price.toFixed(2)}
+          </TableHeader>
+          <TableBody>
+            {filteredAdminProducts.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <PackagePlus className="h-8 w-8" /> 
+                    <span>
+                      {adminSearchTerm 
+                        ? `No products found matching "${adminSearchTerm}".` 
+                        : 'No products added by you.'}
+                    </span>
+                  </div>
                 </TableCell>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </ScrollArea>
+            ) : (
+              filteredAdminProducts.map((product) => (
+                <TableRow key={product.id}>
+                  <TableCell className="font-medium">{product.name}</TableCell>
+                  <TableCell>{product.code}</TableCell>
+                  <TableCell className="text-right">
+                    ${product.price.toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </ScrollArea>
+    </div>
   );
 }
