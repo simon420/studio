@@ -20,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth-store';
-import { LogIn, Loader2 } from 'lucide-react';
+import { LogIn, Loader2, Info } from 'lucide-react';
 import Link from 'next/link';
 
 const loginSchema = z.object({
@@ -94,10 +94,17 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email and password to access Product Finder.
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Info className="h-6 w-6" />
+          </div>
+          <CardTitle className="text-2xl font-bold">Login to Product Finder</CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Enter your credentials to access your account.
+          </CardDescription>
+          <CardDescription className="pt-2 text-sm text-muted-foreground/80">
+           Product Finder is your go-to solution for efficiently managing and discovering products. 
+           Utilizing Next.js, Firebase Authentication, and Cloud Firestore for a seamless experience.
           </CardDescription>
         </CardHeader>
         <CardContent>
