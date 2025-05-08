@@ -12,6 +12,15 @@ const registerSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // Check if Firebase Admin SDK was initialized correctly
+  if (!adminDb) {
+    console.error('API Error: Firebase Admin SDK is not initialized. Registration cannot proceed.');
+    return NextResponse.json(
+      { message: 'Server configuration error. Please contact support.' },
+      { status: 500 }
+    );
+  }
+
   try {
     const body = await req.json();
     const validation = registerSchema.safeParse(body);
