@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist, createJSONStorage, devtools } from 'zustand/middleware';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -21,7 +22,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
-  _updateAuthData: (user: FirebaseUser | null, role?: UserRole) => void; // Internal helper
+  _updateAuthData: (user: FirebaseUser | null, roleOverride?: UserRole) => Promise<void>; // Internal helper, now async
   _fetchUserRole: (uid: string) => Promise<UserRole>; // Internal helper to fetch role
 }
 
@@ -68,8 +69,6 @@ export const useAuthStore = create<AuthState>()(
             await setDoc(userDocRef, userData);
             
             // onAuthStateChanged will handle the rest
-            // We can optimistically update role here if needed, but listener is source of truth
-            // get()._updateAuthData(firebaseUser, role); // Optimistic update
           } catch (error: any) {
             set({ isLoading: false });
             console.error('Firebase registration error:', error);
@@ -84,8 +83,8 @@ export const useAuthStore = create<AuthState>()(
             // onAuthStateChanged will clear user state
           } catch (error) {
             console.error('Firebase logout error:', error);
-            // Even if Firebase signOut fails, clear client state via listener
-            set({ ...initialAuthState, isLoading: false }); // Fallback to ensure logged out state
+            // Fallback to ensure logged out state, onAuthStateChanged should also trigger
+            set({ ...initialAuthState, isLoading: false }); 
           }
         },
 
@@ -97,8 +96,10 @@ export const useAuthStore = create<AuthState>()(
               const userData = userDocSnap.data() as UserFirestoreData;
               return userData.role;
             } else {
-              console.warn('User document not found in Firestore for UID:', uid);
-              return 'user'; // Default to 'user' if no role doc found (or handle as error)
+              console.warn('User document not found in Firestore for UID:', uid, "- defaulting to 'user' role.");
+              // This can happen if registration succeeded for auth but Firestore write failed/is pending
+              // Or if user was created via Firebase console without a corresponding Firestore doc.
+              return 'user'; 
             }
           } catch (error) {
             console.error('Error fetching user role from Firestore:', error);
@@ -106,19 +107,35 @@ export const useAuthStore = create<AuthState>()(
           }
         },
         
-        _updateAuthData: (fbUser, roleOverride) => {
+        _updateAuthData: async (fbUser, roleOverride) => {
           if (fbUser) {
-            set(async (state) => {
+            // Explicitly set isLoading to true when starting to process a user,
+            // especially since role fetching is async.
+            // This handles cases where _updateAuthData might be called when isLoading was false.
+            set(state => ({ ...state, isLoading: true }));
+            try {
               const role = roleOverride || (await get()._fetchUserRole(fbUser.uid));
-              return {
+              set({
                 firebaseUser: fbUser,
                 email: fbUser.email,
                 uid: fbUser.uid,
                 userRole: role,
                 isAuthenticated: true,
                 isLoading: false,
-              };
-            });
+              });
+            } catch (error) {
+              // This catch is primarily for unexpected errors in _fetchUserRole
+              // though _fetchUserRole itself has a catch and returns a default.
+              console.error("Error during role fetching in _updateAuthData:", error);
+              set({
+                firebaseUser: fbUser,
+                email: fbUser.email,
+                uid: fbUser.uid,
+                userRole: 'user', // Fallback role
+                isAuthenticated: true,
+                isLoading: false, // Ensure isLoading is set to false
+              });
+            }
           } else {
             set({ ...initialAuthState, isLoading: false });
           }
@@ -129,8 +146,6 @@ export const useAuthStore = create<AuthState>()(
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
           // Only persist minimal, non-sensitive data.
-          // isLoading will be true on app load until onAuthStateChanged fires.
-          // email: state.email, // Example: could persist email for quick display
         }),
         onRehydrateStorage: () => {
           return (state) => {
@@ -144,17 +159,14 @@ export const useAuthStore = create<AuthState>()(
 );
 
 // Initialize Firebase onAuthStateChanged listener
-// This should run once when the app/store is loaded on the client-side
 if (typeof window !== 'undefined' && auth) {
-  onAuthStateChanged(auth, async (user) => {
-    const storeUpdater = useAuthStore.getState()._updateAuthData;
-    if (user) {
-      storeUpdater(user); // This will also trigger role fetch
-    } else {
-      storeUpdater(null);
-    }
+  onAuthStateChanged(auth, async (user) => { // Make the listener callback async
+    // Await _updateAuthData to ensure all async operations within it (like role fetching) complete
+    // before subsequent dependent logic in components might run.
+    await useAuthStore.getState()._updateAuthData(user);
   }, (error) => {
     console.error("onAuthStateChanged error:", error);
-    useAuthStore.getState()._updateAuthData(null);
+    // Ensure state is reset and isLoading is false even on listener error
+    useAuthStore.getState()._updateAuthData(null); 
   });
 }
