@@ -103,7 +103,7 @@ export const useProductStore = create<ProductState>()(
       },
 
       clearSearchAndResults: () => {
-          set({ searchTerm: '', filteredProducts: [] });
+          set({ searchTerm: '', filteredProducts: [], products: [] }); // Also clear the main products list
       }
     }),
     { name: "ProductStore" } 
@@ -133,7 +133,6 @@ if (typeof window !== 'undefined') {
         } else {
           console.log("ProductStore: Auth loaded, user not authenticated. Clearing products.");
           productStore.clearSearchAndResults();
-          set({ products: [] }); // Also clear the main products list
         }
       }
       // Case 2: User logs in (and auth was already loaded)
@@ -145,7 +144,6 @@ if (typeof window !== 'undefined') {
       else if (previousAuthState.isAuthenticated && !currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
         console.log("ProductStore: User logged out. Clearing products.");
         productStore.clearSearchAndResults();
-        set({ products: [] }); // Also clear the main products list
       }
     }
   );
