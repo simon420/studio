@@ -44,7 +44,7 @@ type ProductFormInputValues = {
 
 export default function ProductInputForm() {
   const addProductToStore = useProductStore((state) => state.addProduct);
-  const { isAuthenticated, userRole, isLoading: authIsLoading } = useAuthStore();
+  const { isAuthenticated, userRole, isLoading: authIsLoading, uid: currentUserUid, email: currentUserEmail } = useAuthStore();
   const { toast } = useToast();
   const isAdmin = isAuthenticated && userRole === 'admin';
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -97,6 +97,8 @@ export default function ProductInputForm() {
             name: values.name,
             code: values.code,
             price: values.price,
+            addedByUid: currentUserUid,
+            addedByEmail: currentUserEmail,
         };
         
         // Add to Firestore

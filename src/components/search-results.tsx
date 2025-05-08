@@ -64,16 +64,17 @@ export default function SearchResults() {
                  </TableCaption>
                  <TableHeader className="sticky top-0 bg-secondary z-10">
                    <TableRow>
-                     <TableHead className="w-[40%]">Name</TableHead>
-                     <TableHead className="w-[20%]">Code</TableHead>
-                     <TableHead className="w-[20%] text-right">Price</TableHead>
+                     <TableHead className="w-[30%]">Name</TableHead>
+                     <TableHead className="w-[15%]">Code</TableHead>
+                     <TableHead className="w-[15%] text-right">Price</TableHead>
                      <TableHead className="w-[20%]">Server</TableHead>
+                     <TableHead className="w-[20%]">Added By</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
                    {showNoResultsMessage ? (
                      <TableRow>
-                       <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                          <div className="flex flex-col items-center justify-center gap-2">
                            <PackageSearch className="h-8 w-8" />
                            <span>No results found for "{searchTerm}".</span>
@@ -82,7 +83,7 @@ export default function SearchResults() {
                      </TableRow>
                    ) : showInitialMessage ? (
                      <TableRow>
-                       <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
+                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                          Enter a search term above, or add a product (if admin).
                        </TableCell>
                      </TableRow>
@@ -99,6 +100,7 @@ export default function SearchResults() {
                              {product.serverId || 'N/A'}
                            </Badge>
                          </TableCell>
+                         <TableCell>{product.addedByEmail || product.addedByUid || 'N/A'}</TableCell>
                        </TableRow>
                      ))
                    )}

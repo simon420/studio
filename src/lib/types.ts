@@ -5,6 +5,8 @@ export type Product = {
   code: number;
   price: number;
   serverId?: string; // Optional: Identifier for the server where the product is located
+  addedByUid?: string; // UID of the user who added the product
+  addedByEmail?: string; // Email of the user who added the product
 };
 
 export type UserRole = 'admin' | 'user';
@@ -21,3 +23,4 @@ export type UserFirestoreData = {
 
 // SessionPayload is no longer needed with Firebase Auth handling sessions.
 // If you pass ID tokens to backend, you might define a type for the decoded token.
+

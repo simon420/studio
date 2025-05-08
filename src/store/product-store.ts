@@ -53,6 +53,8 @@ export const useProductStore = create<ProductState>()(
               code: data.code,
               price: data.price,
               serverId: 'firestore', 
+              addedByUid: data.addedByUid,
+              addedByEmail: data.addedByEmail,
             };
           });
           set({
@@ -103,7 +105,16 @@ export const useProductStore = create<ProductState>()(
       },
 
       clearSearchAndResults: () => {
-          set({ searchTerm: '', filteredProducts: [], products: [] }); // Also clear the main products list
+          // When clearing, we should also clear the base products list if they were fetched from Firestore
+          // and not just locally added mock data.
+          const { isAuthenticated } = useAuthStore.getState();
+          if (isAuthenticated) {
+             // If authenticated, implies products might be from Firestore, so refetch on next login/search.
+             set({ searchTerm: '', filteredProducts: [], products: [] });
+          } else {
+             // If not authenticated, safe to clear all.
+            set({ searchTerm: '', filteredProducts: [], products: [] });
+          }
       }
     }),
     { name: "ProductStore" } 
@@ -117,7 +128,7 @@ if (typeof window !== 'undefined') {
   if (!initialAuth.isLoading && initialAuth.isAuthenticated) {
     useProductStore.getState().fetchProductsFromFirestore();
   } else if (!initialAuth.isLoading && !initialAuth.isAuthenticated) {
-    useProductStore.getState().clearSearchAndResults();
+    // useProductStore.getState().clearSearchAndResults(); // This was causing products to be cleared on initial load before auth check
   }
 
   // Subscribe to auth store changes
