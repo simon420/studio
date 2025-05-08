@@ -37,9 +37,6 @@ export default function SearchResults() {
     }
   }, [isAuthenticated, products, searchTerm]); // Depend on auth status, products list, and search term
 
-  const showNoResultsMessage = filteredProducts.length === 0 && !!searchTerm;
-  const showInitialMessage = filteredProducts.length === 0 && !searchTerm;
-
   return (
      <Card>
         <CardHeader>
@@ -62,9 +59,7 @@ export default function SearchResults() {
                  <TableCaption className="py-4">
                    {filteredProducts.length > 0
                      ? `Showing ${filteredProducts.length} product(s).`
-                     : searchTerm && filteredProducts.length === 0 
-                     ? '' // Message "Your search for ... yielded no results." deleted as per request
-                     : 'Enter a search term or add products (if admin).'}
+                     : ''}
                  </TableCaption>
                  <TableHeader className="sticky top-0 bg-secondary z-10">
                    <TableRow>
@@ -76,22 +71,7 @@ export default function SearchResults() {
                    </TableRow>
                  </TableHeader>
                  <TableBody>
-                   {showNoResultsMessage ? (
-                     <TableRow>
-                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                         <div className="flex flex-col items-center justify-center gap-2">
-                           <PackageSearch className="h-8 w-8" />
-                           <span>No results found for "{searchTerm}".</span>
-                         </div>
-                       </TableCell>
-                     </TableRow>
-                   ) : showInitialMessage ? (
-                     <TableRow>
-                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                         Enter a search term above, or add a product (if admin).
-                       </TableCell>
-                     </TableRow>
-                   ) : (
+                   {filteredProducts.length > 0 ? (
                      filteredProducts.map((product) => (
                        <TableRow key={product.id}>
                          <TableCell className="font-medium">{product.name}</TableCell>
@@ -107,6 +87,21 @@ export default function SearchResults() {
                          <TableCell>{product.addedByEmail || product.addedByUid || 'N/A'}</TableCell>
                        </TableRow>
                      ))
+                   ) : searchTerm ? (
+                     <TableRow>
+                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                         <div className="flex flex-col items-center justify-center gap-2">
+                           <PackageSearch className="h-8 w-8" />
+                           <span>No results found for "{searchTerm}".</span>
+                         </div>
+                       </TableCell>
+                     </TableRow>
+                   ) : (
+                     <TableRow>
+                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                         {/* Message "Enter a search term or add products (if admin)." removed as per request */}
+                       </TableCell>
+                     </TableRow>
                    )}
                  </TableBody>
                </Table>
