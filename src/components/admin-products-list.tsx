@@ -91,7 +91,7 @@ export default function AdminProductsList() {
             {filteredAdminProducts.length > 0
               ? `Showing ${filteredAdminProducts.length} of your product(s).`
               : adminSearchTerm && filteredAdminProducts.length === 0
-              ? `Your search for "${adminSearchTerm}" yielded no results.` // Updated message
+              ? '' // Message "Your search for ... yielded no results." deleted as per request
               : 'You have not added any products yet.'}
           </TableCaption>
           <TableHeader className="sticky top-0 bg-secondary z-10">
