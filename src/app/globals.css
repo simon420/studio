@@ -139,12 +139,12 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('https://picsum.photos/1920/1080?random&blur=2&data-ai-hint=digital+network'); /* Updated image URL and hint */
+  background-image: url('https://picsum.photos/1920/1080?random=2&blur=3&data-ai-hint=corporate+technology'); /* New background image */
   background-size: cover;
   background-position: center;
-  filter: blur(8px) brightness(0.7); /* Adjusted brightness */
-  -webkit-filter: blur(8px) brightness(0.7); /* For Safari */
-  transform: scale(1.1); /* To avoid edge artifacts from blur */
+  filter: blur(6px) brightness(0.65) saturate(0.9); /* Slightly adjusted filter */
+  -webkit-filter: blur(6px) brightness(0.65) saturate(0.9); /* For Safari */
+  transform: scale(1.12); /* Adjusted scale */
   z-index: 1;
 }
 
@@ -157,9 +157,9 @@ html {
   bottom: 0;
   background: linear-gradient(
     -45deg, 
-    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.35), /* Increased opacity */
-    hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.25), /* Increased opacity */
-    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15) /* Increased opacity */
+    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.35), 
+    hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.25), 
+    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15) 
   );
   background-size: 400% 400%;
   animation: loginGradientAnimation 20s ease infinite;
@@ -246,3 +246,16 @@ html {
     position: relative;
     z-index: 5; /* Needs to be higher than main-app-container::before */
 }
+
+/* Remove whitespace around thead to prevent hydration errors */
+.sticky-table-header thead {
+  display: table-header-group; /* Ensures thead behaves correctly */
+}
+.sticky-table-header thead tr {
+  display: table-row; /* Ensures tr behaves correctly */
+}
+.sticky-table-header thead th {
+  display: table-cell; /* Ensures th behaves correctly */
+}
+
+    
