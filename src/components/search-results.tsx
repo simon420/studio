@@ -63,7 +63,7 @@ export default function SearchResults() {
                    {filteredProducts.length > 0
                      ? `Showing ${filteredProducts.length} product(s).`
                      : searchTerm && filteredProducts.length === 0 
-                     ? `Your search for "${searchTerm}" yielded no results.` // Updated message
+                     ? '' // Message "Your search for ... yielded no results." deleted as per request
                      : 'Enter a search term or add products (if admin).'}
                  </TableCaption>
                  <TableHeader className="sticky top-0 bg-secondary z-10">
