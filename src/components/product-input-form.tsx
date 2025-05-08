@@ -19,7 +19,7 @@ import { useProductStore } from '@/store/product-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Loader2 } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 
@@ -53,14 +53,14 @@ export default function ProductInputForm() {
     resolver: zodResolver(formSchema), // Zod will coerce string to number for validation
     defaultValues: {
       name: '',
-      code: '', // Default to empty string
-      price: '', // Default to empty string
+      code: '', 
+      price: '', 
     },
   });
 
    React.useEffect(() => {
      if (!isAdmin && !authIsLoading) { 
-       form.reset();
+       form.reset({ name: '', code: '', price: '' });
      }
    }, [isAdmin, authIsLoading, form]);
 
@@ -77,6 +77,21 @@ export default function ProductInputForm() {
     }
     setIsSubmitting(true);
     try {
+        // Check if product code already exists
+        const productsRef = collection(db, 'products');
+        const q = query(productsRef, where("code", "==", values.code));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            toast({
+                title: "Duplicate Product Code",
+                description: `A product with code "${values.code}" already exists.`,
+                variant: "destructive",
+            });
+            setIsSubmitting(false);
+            return;
+        }
+
         // Data to be saved (matches Zod schema, so code/price are numbers)
         const productDataToSave = {
             name: values.name,
@@ -99,7 +114,7 @@ export default function ProductInputForm() {
           title: "Product Added",
           description: `"${values.name}" has been added successfully.`,
         });
-        form.reset(); // Reset to defaultValues (empty strings)
+        form.reset({ name: '', code: '', price: '' });
     } catch (e: any) {
         console.error("Error adding product:", e);
         toast({
@@ -121,11 +136,11 @@ export default function ProductInputForm() {
           <FormField
             control={form.control}
             name="name"
-            render={({ field }) => ( // field.value is a string
+            render={({ field }) => ( 
               <FormItem>
                 <FormLabel>Product Name</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Super Widget" {...field} />
+                  <Input placeholder="e.g., Super Widget" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -134,12 +149,11 @@ export default function ProductInputForm() {
           <FormField
             control={form.control}
             name="code"
-            render={({ field }) => ( // field.value is a string
+            render={({ field }) => ( 
               <FormItem>
                 <FormLabel>Product Code</FormLabel>
                 <FormControl>
-                  {/* {...field} passes string value and onChange for strings */}
-                  <Input type="number" placeholder="e.g., 12345" {...field} />
+                  <Input type="number" placeholder="e.g., 12345" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -148,12 +162,11 @@ export default function ProductInputForm() {
           <FormField
             control={form.control}
             name="price"
-            render={({ field }) => ( // field.value is a string
+            render={({ field }) => ( 
               <FormItem>
                 <FormLabel>Price ($)</FormLabel>
                 <FormControl>
-                  {/* {...field} passes string value and onChange for strings */}
-                  <Input type="number" step="0.01" placeholder="e.g., 19.99" {...field} />
+                  <Input type="number" step="0.01" placeholder="e.g., 19.99" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
