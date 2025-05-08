@@ -2,65 +2,84 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Product } from '@/lib/types';
 import { useAuthStore } from './auth-store';
+import { db } from '@/lib/firebase'; 
+import { collection, getDocs, addDoc } from 'firebase/firestore';
+
 
 interface ProductState {
   searchTerm: string;
   products: Product[];
   filteredProducts: Product[];
   setSearchTerm: (term: string) => void;
-  addProduct: (product: Omit<Product, 'id' | 'serverId'>) => void;
+  addProduct: (product: Product) => void; // Changed to accept full Product object
   filterProducts: () => void;
   clearSearchAndResults: () => void;
   loadInitialProducts: (initialProducts: Product[]) => void;
+  fetchProductsFromFirestore: () => Promise<void>;
 }
 
-let productIdCounter = Date.now();
 
 export const useProductStore = create<ProductState>()(
-  devtools( // Optional: For Zustand devtools
+  devtools( 
     (set, get) => ({
       searchTerm: '',
-      products: [
-        { id: 'server1-101', name: 'Laptop Pro', code: 101, price: 1200, serverId: 'server1' },
-        { id: 'server2-205', name: 'Wireless Mouse', code: 205, price: 25, serverId: 'server2' },
-        { id: 'server1-102', name: 'Monitor UltraWide', code: 102, price: 450, serverId: 'server1' },
-        { id: 'server3-301', name: 'Keyboard Mechanical', code: 301, price: 75, serverId: 'server3' },
-        { id: 'server2-206', name: 'USB-C Hub', code: 206, price: 40, serverId: 'server2' },
-      ],
+      products: [],
       filteredProducts: [],
 
       loadInitialProducts: (initialProducts) => {
         set({ products: initialProducts });
-        get().filterProducts(); // Filter after loading new products
+        get().filterProducts(); 
       },
 
       setSearchTerm: (term) => {
         set({ searchTerm: term });
         get().filterProducts();
       },
+      
+      fetchProductsFromFirestore: async () => {
+        const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
+        if (authIsLoading || !isAuthenticated) {
+          set({ products: [], filteredProducts: []}); // Clear products if not authenticated or still loading
+          return;
+        }
+        try {
+          const productCollection = collection(db, 'products');
+          const productSnapshot = await getDocs(productCollection);
+          const productList: Product[] = productSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              name: data.name,
+              code: data.code,
+              price: data.price,
+              serverId: 'firestore', 
+            };
+          });
+          set({
+            products: productList,
+          });
+          get().filterProducts(); // Filter after fetching
+        } catch (error) {
+          console.error('Error fetching products from Firestore:', error);
+        }
+      },
 
-      addProduct: (productData) => {
+      // addProduct now expects a full Product object, typically after it's saved to Firestore
+      addProduct: (newProductWithId) => {
         const { userRole, isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
-        // Defer action if auth is still loading, or if not admin
         if (authIsLoading || !isAuthenticated || userRole !== 'admin') {
-            console.warn("Attempted to add product without admin privileges or while auth loading.");
+            console.warn("Attempted to add product to store without admin privileges or while auth loading.");
             return;
         }
-
-        const newProduct: Product = {
-          ...productData,
-          id: `local-${productIdCounter++}`,
-          serverId: 'local'
-        };
+        
         set((state) => ({
-          products: [...state.products, newProduct],
+            products: [...state.products, newProductWithId],
         }));
-        get().filterProducts();
+        get().filterProducts(); // Re-filter products after adding
       },
 
       filterProducts: () => {
         const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
-        // If auth is loading, or user is not authenticated, clear results.
         if (authIsLoading || !isAuthenticated) {
             set({ filteredProducts: [] });
             return;
@@ -68,7 +87,7 @@ export const useProductStore = create<ProductState>()(
 
         const { products, searchTerm } = get();
         if (!searchTerm.trim()) {
-          set({ filteredProducts: products }); // Show all if search is empty and authenticated
+          set({ filteredProducts: products }); 
           return;
         }
 
@@ -87,49 +106,47 @@ export const useProductStore = create<ProductState>()(
           set({ searchTerm: '', filteredProducts: [] });
       }
     }),
-    { name: "ProductStore" } // Name for devtools
+    { name: "ProductStore" } 
   )
 );
 
-// Subscribe to auth store changes
+
 if (typeof window !== 'undefined') {
+  // Initial fetch when the store is created and auth state is resolved
+  const initialAuth = useAuthStore.getState();
+  if (!initialAuth.isLoading && initialAuth.isAuthenticated) {
+    useProductStore.getState().fetchProductsFromFirestore();
+  } else if (!initialAuth.isLoading && !initialAuth.isAuthenticated) {
+    useProductStore.getState().clearSearchAndResults();
+  }
+
+  // Subscribe to auth store changes
   useAuthStore.subscribe(
     (currentAuthState, previousAuthState) => {
-      const productStoreActions = useProductStore.getState();
-
-      // If auth state finished loading (isLoading transitioned from true to false)
+      const productStore = useProductStore.getState();
+      
+      // Case 1: Auth just finished loading
       if (previousAuthState.isLoading && !currentAuthState.isLoading) {
         if (currentAuthState.isAuthenticated) {
-          console.log("ProductStore: Auth confirmed, filtering products.");
-          productStoreActions.filterProducts();
+          console.log("ProductStore: Auth loaded, user authenticated. Fetching products.");
+          productStore.fetchProductsFromFirestore();
         } else {
-          console.log("ProductStore: Auth confirmed (not authenticated), clearing products.");
-          productStoreActions.clearSearchAndResults();
+          console.log("ProductStore: Auth loaded, user not authenticated. Clearing products.");
+          productStore.clearSearchAndResults();
+          set({ products: [] }); // Also clear the main products list
         }
       }
-      // If user logs out (isAuthenticated transitions from true to false)
-      // and isLoading is false (meaning it's not an initial load state change)
-      else if (previousAuthState.isAuthenticated && !currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
-        console.log("ProductStore: User logged out, clearing search and results.");
-        productStoreActions.clearSearchAndResults();
-      }
-      // If user logs in (isAuthenticated transitions from false to true)
-      // and isLoading is false
+      // Case 2: User logs in (and auth was already loaded)
       else if (!previousAuthState.isAuthenticated && currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
-        console.log("ProductStore: User logged in, filtering products.");
-        productStoreActions.filterProducts();
+        console.log("ProductStore: User logged in. Fetching products.");
+        productStore.fetchProductsFromFirestore();
+      }
+      // Case 3: User logs out (and auth was already loaded)
+      else if (previousAuthState.isAuthenticated && !currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
+        console.log("ProductStore: User logged out. Clearing products.");
+        productStore.clearSearchAndResults();
+        set({ products: [] }); // Also clear the main products list
       }
     }
   );
-
-  // Initial filter based on auth state when store loads
-  // This handles the case where the user is already logged in when the app loads.
-  const initialAuth = useAuthStore.getState();
-  if (!initialAuth.isLoading) { // Only run if auth state is resolved
-    if (initialAuth.isAuthenticated) {
-      useProductStore.getState().filterProducts();
-    } else {
-      useProductStore.getState().clearSearchAndResults();
-    }
-  }
 }

@@ -19,6 +19,8 @@ import { useProductStore } from '@/store/product-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Loader2 } from 'lucide-react';
+import { collection, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 
 const formSchema = z.object({
@@ -33,30 +35,38 @@ const formSchema = z.object({
   }),
 });
 
+// Type for react-hook-form's internal state, where inputs are strings
+type ProductFormInputValues = {
+  name: string;
+  code: string; 
+  price: string;
+};
+
 export default function ProductInputForm() {
-  const addProduct = useProductStore((state) => state.addProduct);
+  const addProductToStore = useProductStore((state) => state.addProduct);
   const { isAuthenticated, userRole, isLoading: authIsLoading } = useAuthStore();
   const { toast } = useToast();
   const isAdmin = isAuthenticated && userRole === 'admin';
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<ProductFormInputValues>({ // Use string types for form state
+    resolver: zodResolver(formSchema), // Zod will coerce string to number for validation
     defaultValues: {
       name: '',
-      code: undefined,
-      price: undefined,
+      code: '', // Default to empty string
+      price: '', // Default to empty string
     },
   });
 
    React.useEffect(() => {
-     if (!isAdmin && !authIsLoading) { // Only reset if not admin and auth is not loading
+     if (!isAdmin && !authIsLoading) { 
        form.reset();
      }
    }, [isAdmin, authIsLoading, form]);
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  // onSubmit receives values inferred from Zod schema (numbers for code/price)
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!isAdmin) {
         toast({
             title: "Unauthorized",
@@ -67,21 +77,34 @@ export default function ProductInputForm() {
     }
     setIsSubmitting(true);
     try {
-        addProduct({ // This action itself should be quick as it's client-side
+        // Data to be saved (matches Zod schema, so code/price are numbers)
+        const productDataToSave = {
             name: values.name,
             code: values.code,
             price: values.price,
+        };
+        
+        // Add to Firestore
+        const docRef = await addDoc(collection(db, 'products'), productDataToSave);
+        console.log("Document written to Firestore with ID: ", docRef.id);
+
+        // Add to Zustand store with Firestore ID and serverId
+        addProductToStore({ 
+            ...productDataToSave,
+            id: docRef.id, // Use the ID from Firestore
+            serverId: 'firestore', 
         });
 
         toast({
           title: "Product Added",
-          description: `"${values.name}" has been added successfully locally.`,
+          description: `"${values.name}" has been added successfully.`,
         });
-        form.reset();
-    } catch (e) {
+        form.reset(); // Reset to defaultValues (empty strings)
+    } catch (e: any) {
+        console.error("Error adding product:", e);
         toast({
           title: "Error",
-          description: "Could not add product.",
+          description: e.message || "Could not add product.",
           variant: "destructive",
         });
     } finally {
@@ -98,7 +121,7 @@ export default function ProductInputForm() {
           <FormField
             control={form.control}
             name="name"
-            render={({ field }) => (
+            render={({ field }) => ( // field.value is a string
               <FormItem>
                 <FormLabel>Product Name</FormLabel>
                 <FormControl>
@@ -111,11 +134,12 @@ export default function ProductInputForm() {
           <FormField
             control={form.control}
             name="code"
-            render={({ field }) => (
+            render={({ field }) => ( // field.value is a string
               <FormItem>
                 <FormLabel>Product Code</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 12345" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                  {/* {...field} passes string value and onChange for strings */}
+                  <Input type="number" placeholder="e.g., 12345" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -124,11 +148,12 @@ export default function ProductInputForm() {
           <FormField
             control={form.control}
             name="price"
-            render={({ field }) => (
+            render={({ field }) => ( // field.value is a string
               <FormItem>
                 <FormLabel>Price ($)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="e.g., 19.99" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                  {/* {...field} passes string value and onChange for strings */}
+                  <Input type="number" step="0.01" placeholder="e.g., 19.99" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -139,12 +164,12 @@ export default function ProductInputForm() {
               {displayLoading && isAdmin ? 'Adding...' : 'Add Product'}
            </Button>
         </fieldset>
-         {!isAdmin && !authIsLoading && ( // Only show message if auth check is complete
+         {!isAdmin && !authIsLoading && ( 
              <p className="text-sm text-muted-foreground text-center pt-2">
                  Only administrators can add products.
              </p>
          )}
-         {authIsLoading && ( // Show general loading if auth is still loading
+         {authIsLoading && ( 
             <div className="flex items-center justify-center pt-2">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                 <p className="ml-2 text-sm text-muted-foreground">Checking permissions...</p>
