@@ -49,7 +49,7 @@ export default function Home() {
       <header className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-primary">Product Finder</h1>
         <p className="text-muted-foreground">
-          Search for products using Firebase Authentication.
+          Search for products using Firebase Autentication and Cloud Firestore Database
         </p>
       </header>
 
@@ -123,3 +123,4 @@ export default function Home() {
     </div>
   );
 }
+
