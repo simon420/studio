@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useProductStore } from '@/store/product-store';
 import { useAuthStore } from '@/store/auth-store'; // Import auth store
+import SearchInput from '@/components/search-input'; // Import SearchInput
 import {
   Table,
   TableBody,
@@ -42,18 +43,21 @@ export default function SearchResults() {
   return (
      <Card>
         <CardHeader>
-          <CardTitle>Search Results</CardTitle>
+          <CardTitle>Search Products</CardTitle> {/* Updated CardTitle */}
         </CardHeader>
         <CardContent>
+           <div className="mb-6"> {/* Add margin for spacing */}
+             <SearchInput />
+           </div>
            {/* Handle non-authenticated state */}
            {!isAuthenticated ? (
-             <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground rounded-md border">
+             <div className="flex flex-col items-center justify-center h-[350px] text-muted-foreground rounded-md border"> {/* Adjusted height due to input */}
                <AlertCircle className="h-8 w-8 mb-2" />
                <p>Log in to see product results.</p>
              </div>
            ) : (
              // Render table when authenticated
-             <ScrollArea className="h-[400px] rounded-md border">
+             <ScrollArea className="h-[350px] rounded-md border"> {/* Adjusted height due to input */}
                <Table>
                  <TableCaption className="py-4">
                    {filteredProducts.length > 0

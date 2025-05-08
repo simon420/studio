@@ -6,7 +6,8 @@ import * as React from 'react';
 // import Link from 'next/link'; 
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
-import SearchInput from '@/components/search-input';
+// SearchInput is now part of SearchResults
+// import SearchInput from '@/components/search-input'; 
 import ProductInputForm from '@/components/product-input-form';
 // RegisterForm is not used on this page
 // import RegisterForm from '@/components/register-form'; 
@@ -58,19 +59,9 @@ export default function Home() {
 
       <main className="space-y-8">
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8"> {/* Adjusted grid from md:grid-cols-3 to md:grid-cols-2 */}
           
-          {/* Section 1: Search Products */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Search Products</CardTitle>
-            </CardHeader>
-            <CardContent>
-             <SearchInput />
-            </CardContent>
-          </Card>
-
-          {/* Section 2: Add New Product (Admin Only) or User Info */}
+          {/* Section 1: Add New Product (Admin Only) or User Info */}
           {userRole === 'admin' ? (
             <Card>
               <CardHeader>
@@ -90,13 +81,13 @@ export default function Home() {
               </CardHeader>
               <CardContent className="flex-grow flex items-center">
                 <p className="text-sm text-muted-foreground">
-                  Adding new products is an exclusive feature for administrator accounts. As a user, you can search for existing products using the panel on the left.
+                  Adding new products is an exclusive feature for administrator accounts. As a user, you can search for existing products.
                 </p>
               </CardContent>
             </Card>
           )}
           
-          {/* Section 3: My Added Products (Admin Only) or Placeholder */}
+          {/* Section 2: My Added Products (Admin Only) or Placeholder */}
           {userRole === 'admin' ? (
             <Card>
               <CardHeader>
@@ -122,7 +113,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* Section 4: Search Results */}
+        {/* Section 3: Search Products & Results */}
         <SearchResults /> 
       </main>
 
