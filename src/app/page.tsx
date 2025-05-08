@@ -5,6 +5,7 @@ import * as React from 'react';
 // Link component is not used directly in this version of the page's logic for redirection
 // import Link from 'next/link'; 
 import { useRouter } from 'next/navigation';
+import Image from 'next/image'; // Import next/image
 import { useAuthStore } from '@/store/auth-store';
 // SearchInput is now part of SearchResults
 // import SearchInput from '@/components/search-input'; 
@@ -15,7 +16,7 @@ import SearchResults from '@/components/search-results';
 import AuthControls from '@/components/auth-controls';
 import AdminProductsList from '@/components/admin-products-list'; // Import the new component
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertCircle, Loader2, PackageSearch } from 'lucide-react'; // Added PackageSearch
+import { AlertCircle, Loader2, PackageSearch, Search } from 'lucide-react'; // Added PackageSearch, Search
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function Home() {
@@ -46,11 +47,23 @@ export default function Home() {
   // Render the authenticated application content.
   return (
     <div className="container mx-auto p-4 md:p-8">
-      <header className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-primary">Product Finder</h1>
-        <p className="text-muted-foreground">
-          Search for products using Firebase Autentication and Cloud Firestore Database
-        </p>
+      <header className="mb-8 flex flex-col sm:flex-row items-center justify-center sm:justify-start text-center sm:text-left">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 mr-0 sm:mr-4 mb-2 sm:mb-0 rounded-full overflow-hidden shadow-md">
+            <Image
+                src="https://picsum.photos/80/80" 
+                alt="Product Finder Logo"
+                width={80}
+                height={80}
+                className="object-cover"
+                data-ai-hint="magnifying glass"
+            />
+        </div>
+        <div>
+            <h1 className="text-3xl font-bold text-primary">Product Finder</h1>
+            <p className="text-muted-foreground">
+            Search for products using Firebase Autentication and Cloud Firestore Database
+            </p>
+        </div>
       </header>
 
       <div className="mb-8">
