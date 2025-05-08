@@ -58,7 +58,7 @@ export default function RegisterForm() {
     setIsLoading(true);
     form.clearErrors(); // Clear previous errors
 
-    let response: Response | null = null; // Define response outside try block
+    let response: Response | null = null; 
 
     try {
        // Exclude confirmPassword before sending to API
@@ -70,29 +70,23 @@ export default function RegisterForm() {
         body: JSON.stringify(payload),
       });
 
-      // Read the response body as text first
       const responseText = await response.text();
       let data;
 
       try {
-        // Try parsing the text as JSON
         data = JSON.parse(responseText);
       } catch (jsonError) {
-        // If JSON parsing fails, check if it's HTML or just malformed
         console.error('API did not return valid JSON:', jsonError);
-        console.error('Raw API response text:', responseText); // Log the raw text
+        console.error('Raw API response text:', responseText); 
         if (responseText.trim().toLowerCase().startsWith('<!doctype html')) {
              throw new Error('Server returned an HTML error page instead of JSON. Check server logs.');
         } else {
-             // Throw a more specific error including the response status if available
-             const statusText = response.statusText ? ` (${response.statusText})` : '';
-             throw new Error(`Failed to parse server response (Status: ${response.status}${statusText}). Response was not valid JSON.`);
+             const statusText = response?.statusText ? ` (${response.statusText})` : '';
+             throw new Error(`Failed to parse server response (Status: ${response?.status}${statusText}). Response was not valid JSON.`);
         }
       }
 
-      // Now that we have successfully parsed JSON (data), check response.ok
       if (!response.ok) {
-        // Handle known API errors (like validation errors or conflicts)
         if (data.errors) {
              Object.entries(data.errors as Record<string, string[]>).forEach(([field, messages]) => {
                  form.setError(field as keyof z.infer<typeof registerSchema>, {
@@ -101,31 +95,39 @@ export default function RegisterForm() {
                  });
              });
         }
-         // Use the message from the parsed JSON error response
          throw new Error(data.message || `Registration failed with status: ${response.status}`);
       }
 
-      // --- Success Case ---
       toast({
         title: 'Registration Successful',
         description: 'You can now log in with your credentials.',
       });
 
-      router.push('/login'); // Redirect to login page after successful registration
+      router.push('/login'); 
 
     } catch (error: any) {
       console.error('Registration error:', error);
+
+      let toastDescription = error.message || 'An unexpected error occurred.';
+      if (!error.message && response && !response.ok) {
+        toastDescription = `Server responded with status ${response.status}.`;
+      }
+      
+      // Provide a more specific message if the known server configuration error occurs
+      if (error.message === 'Server configuration error. Please contact support.') {
+        toastDescription = 'Registration failed due to a server configuration issue. Please check the server logs for more details (e.g., Firebase Admin SDK initialization problems).';
+      }
+
       toast({
         title: 'Registration Failed',
-        // Check if response exists and wasn't OK for a more specific default message
-        description: error.message || (response && !response.ok ? `Server responded with status ${response.status}` : 'An unexpected error occurred.'),
+        description: toastDescription,
         variant: 'destructive',
       });
-       // Set a general form error if it's not field-specific
+      
        if (!form.formState.errors.username && !form.formState.errors.password && !form.formState.errors.confirmPassword && !form.formState.errors.role) {
           form.setError('root.serverError', {
              type: 'server',
-             message: error.message || 'An unexpected error occurred.'
+             message: toastDescription 
           });
        }
     } finally {
@@ -199,7 +201,6 @@ export default function RegisterForm() {
             </FormItem>
           )}
         />
-         {/* Display root level errors */}
          {form.formState.errors.root?.serverError && (
              <p className="text-sm font-medium text-destructive">
                  {form.formState.errors.root.serverError.message}
@@ -213,3 +214,4 @@ export default function RegisterForm() {
     </Form>
   );
 }
+
