@@ -55,7 +55,7 @@ export default function Home() {
                 width={80}
                 height={80}
                 className="object-cover"
-                data-ai-hint="magnifying glass"
+                data-ai-hint="product design" // Updated data-ai-hint
             />
         </div>
         <div>
