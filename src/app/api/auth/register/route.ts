@@ -2,7 +2,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import * as z from 'zod';
 import bcrypt from 'bcrypt';
-import { adminDb } from '@/lib/firebase-admin';
+// Import adminInitializationError along with adminDb
+import { adminDb, adminInitializationError } from '@/lib/firebase-admin';
 import type { User } from '@/lib/types';
 
 const registerSchema = z.object({
@@ -14,8 +15,11 @@ const registerSchema = z.object({
 export async function POST(req: NextRequest) {
   // Check if Firebase Admin SDK was initialized correctly
   if (!adminDb) {
-    console.error('API Error: Firebase Admin SDK is not initialized. Registration cannot proceed.');
+    // Use the specific initialization error for server-side logging
+    const detailedError = adminInitializationError || 'Firebase Admin SDK is not initialized (unknown reason).';
+    console.error(`API Error: Firebase Admin SDK is not initialized. Registration cannot proceed. Detail: ${detailedError}`);
     return NextResponse.json(
+      // Client gets a generic message
       { message: 'Server configuration error. Please contact support.' },
       { status: 500 }
     );
