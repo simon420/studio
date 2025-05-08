@@ -44,6 +44,10 @@ export default function AdminProductsList() {
   
   const [editingProduct, setEditingProduct] = React.useState<Product | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false);
+  
+  const [productToDelete, setProductToDelete] = React.useState<Product | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
 
@@ -112,14 +116,22 @@ export default function AdminProductsList() {
     }
   };
 
-  const handleDelete = async (productId: string) => {
+  const openDeleteDialog = (product: Product) => {
+    setProductToDelete(product);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteProduct(productId);
+      await deleteProduct(productToDelete.id);
       toast({
         title: 'Product Deleted',
-        description: 'The product has been successfully deleted.',
+        description: `"${productToDelete.name}" has been successfully deleted.`,
       });
+      setIsDeleteDialogOpen(false);
+      setProductToDelete(null);
     } catch (error: any) {
       console.error('Error deleting product:', error);
       toast({
@@ -197,43 +209,27 @@ export default function AdminProductsList() {
                   <TableCell className="text-right">
                     ${product.price.toFixed(2)}
                   </TableCell>
-                  <TableCell className="text-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEdit(product)}
-                      disabled={isUpdating || isDeleting}
-                      aria-label="Edit product"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm" disabled={isUpdating || isDeleting} aria-label="Delete product">
-                          {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  <TableCell className="text-center">
+                    <div className="flex justify-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(product)}
+                          disabled={isUpdating || isDeleting}
+                          aria-label="Edit product"
+                        >
+                          <Edit className="h-4 w-4" />
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the product
-                            "{product.name}".
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(product.id)}
-                            disabled={isDeleting}
-                            className="bg-destructive hover:bg-destructive/90"
-                          >
-                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => openDeleteDialog(product)}
+                          disabled={isUpdating || isDeleting}
+                          aria-label="Delete product"
+                        >
+                          {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -250,6 +246,31 @@ export default function AdminProductsList() {
           isSaving={isUpdating}
         />
       )}
+      {productToDelete && (
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the product
+                "{productToDelete.name}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting} onClick={() => { setIsDeleteDialogOpen(false); setProductToDelete(null); }}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmDelete}
+                disabled={isDeleting}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
+
