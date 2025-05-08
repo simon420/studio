@@ -17,12 +17,12 @@ export default function RegisterPage() {
           <header className="max-w-md p-6 md:p-8 rounded-xl bg-card/80 backdrop-blur-md shadow-2xl">
             <div className="mx-auto md:mx-0 mb-6 flex items-center justify-center md:justify-start">
               <Image
-                src="https://picsum.photos/100/100?data-ai-hint=secure+signup"
+                src="https://picsum.photos/100/100"
                 alt="Product Finder App Logo"
                 width={100}
                 height={100}
                 className="rounded-full shadow-lg object-cover"
-                data-ai-hint="secure signup" 
+                data-ai-hint="modern tech" 
               />
             </div>
             <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-4">
@@ -62,3 +62,4 @@ export default function RegisterPage() {
     </div>
   );
 }
+
