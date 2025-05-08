@@ -3,7 +3,7 @@ import { devtools } from 'zustand/middleware';
 import type { Product } from '@/lib/types';
 import { useAuthStore } from './auth-store';
 import { db } from '@/lib/firebase'; 
-import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
 
 
 interface ProductState {
@@ -11,7 +11,9 @@ interface ProductState {
   products: Product[];
   filteredProducts: Product[];
   setSearchTerm: (term: string) => void;
-  addProduct: (product: Product) => void; // Changed to accept full Product object
+  addProduct: (product: Product) => void; 
+  updateProductInStoreAndFirestore: (productId: string, updatedData: Partial<Pick<Product, 'name' | 'price'>>) => Promise<void>;
+  deleteProductFromStoreAndFirestore: (productId: string) => Promise<void>;
   filterProducts: () => void;
   clearSearchAndResults: () => void;
   loadInitialProducts: (initialProducts: Product[]) => void;
@@ -39,16 +41,16 @@ export const useProductStore = create<ProductState>()(
       fetchProductsFromFirestore: async () => {
         const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
         if (authIsLoading || !isAuthenticated) {
-          set({ products: [], filteredProducts: []}); // Clear products if not authenticated or still loading
+          set({ products: [], filteredProducts: []}); 
           return;
         }
         try {
           const productCollection = collection(db, 'products');
           const productSnapshot = await getDocs(productCollection);
-          const productList: Product[] = productSnapshot.docs.map(doc => {
-            const data = doc.data();
+          const productList: Product[] = productSnapshot.docs.map(docSnap => {
+            const data = docSnap.data();
             return {
-              id: doc.id,
+              id: docSnap.id,
               name: data.name,
               code: data.code,
               price: data.price,
@@ -60,13 +62,12 @@ export const useProductStore = create<ProductState>()(
           set({
             products: productList,
           });
-          get().filterProducts(); // Filter after fetching
+          get().filterProducts(); 
         } catch (error) {
           console.error('Error fetching products from Firestore:', error);
         }
       },
 
-      // addProduct now expects a full Product object, typically after it's saved to Firestore
       addProduct: (newProductWithId) => {
         const { userRole, isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
         if (authIsLoading || !isAuthenticated || userRole !== 'admin') {
@@ -77,8 +78,59 @@ export const useProductStore = create<ProductState>()(
         set((state) => ({
             products: [...state.products, newProductWithId],
         }));
-        get().filterProducts(); // Re-filter products after adding
+        get().filterProducts(); 
       },
+
+      updateProductInStoreAndFirestore: async (productId, updatedData) => {
+        const { userRole, isAuthenticated, uid } = useAuthStore.getState();
+        if (!isAuthenticated || userRole !== 'admin') {
+          throw new Error("User must be an admin to update products.");
+        }
+
+        const productDocRef = doc(db, 'products', productId);
+        
+        // Ensure the admin owns this product (extra check, though UI should prevent this)
+        const currentProduct = get().products.find(p => p.id === productId);
+        if (currentProduct?.addedByUid !== uid) {
+            throw new Error("Admin can only update their own products.");
+        }
+
+        // Firestore update
+        await updateDoc(productDocRef, updatedData);
+
+        // Zustand store update
+        set((state) => ({
+          products: state.products.map((product) =>
+            product.id === productId ? { ...product, ...updatedData } : product
+          ),
+        }));
+        get().filterProducts(); // Re-filter products after updating
+      },
+
+      deleteProductFromStoreAndFirestore: async (productId) => {
+        const { userRole, isAuthenticated, uid } = useAuthStore.getState();
+         if (!isAuthenticated || userRole !== 'admin') {
+          throw new Error("User must be an admin to delete products.");
+        }
+
+        const productDocRef = doc(db, 'products', productId);
+
+        // Ensure the admin owns this product
+        const currentProduct = get().products.find(p => p.id === productId);
+        if (currentProduct?.addedByUid !== uid) {
+            throw new Error("Admin can only delete their own products.");
+        }
+
+        // Firestore delete
+        await deleteDoc(productDocRef);
+
+        // Zustand store delete
+        set((state) => ({
+          products: state.products.filter((product) => product.id !== productId),
+        }));
+        get().filterProducts(); // Re-filter products after deleting
+      },
+
 
       filterProducts: () => {
         const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
@@ -105,14 +157,10 @@ export const useProductStore = create<ProductState>()(
       },
 
       clearSearchAndResults: () => {
-          // When clearing, we should also clear the base products list if they were fetched from Firestore
-          // and not just locally added mock data.
           const { isAuthenticated } = useAuthStore.getState();
           if (isAuthenticated) {
-             // If authenticated, implies products might be from Firestore, so refetch on next login/search.
              set({ searchTerm: '', filteredProducts: [], products: [] });
           } else {
-             // If not authenticated, safe to clear all.
             set({ searchTerm: '', filteredProducts: [], products: [] });
           }
       }
@@ -123,20 +171,17 @@ export const useProductStore = create<ProductState>()(
 
 
 if (typeof window !== 'undefined') {
-  // Initial fetch when the store is created and auth state is resolved
   const initialAuth = useAuthStore.getState();
   if (!initialAuth.isLoading && initialAuth.isAuthenticated) {
     useProductStore.getState().fetchProductsFromFirestore();
   } else if (!initialAuth.isLoading && !initialAuth.isAuthenticated) {
-    // useProductStore.getState().clearSearchAndResults(); // This was causing products to be cleared on initial load before auth check
+     useProductStore.getState().clearSearchAndResults();
   }
 
-  // Subscribe to auth store changes
   useAuthStore.subscribe(
     (currentAuthState, previousAuthState) => {
       const productStore = useProductStore.getState();
       
-      // Case 1: Auth just finished loading
       if (previousAuthState.isLoading && !currentAuthState.isLoading) {
         if (currentAuthState.isAuthenticated) {
           console.log("ProductStore: Auth loaded, user authenticated. Fetching products.");
@@ -144,14 +189,13 @@ if (typeof window !== 'undefined') {
         } else {
           console.log("ProductStore: Auth loaded, user not authenticated. Clearing products.");
           productStore.clearSearchAndResults();
+          // No need to call set({ products: [] }) here, clearSearchAndResults handles it.
         }
       }
-      // Case 2: User logs in (and auth was already loaded)
       else if (!previousAuthState.isAuthenticated && currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
         console.log("ProductStore: User logged in. Fetching products.");
         productStore.fetchProductsFromFirestore();
       }
-      // Case 3: User logs out (and auth was already loaded)
       else if (previousAuthState.isAuthenticated && !currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
         console.log("ProductStore: User logged out. Clearing products.");
         productStore.clearSearchAndResults();
