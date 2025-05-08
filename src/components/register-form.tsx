@@ -26,126 +26,109 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { useToast } from '@/hooks/use-toast';
-import { UserPlus } from 'lucide-react';
+import { useAuthStore } from '@/store/auth-store';
+import type { UserRole } from '@/lib/types';
+import { UserPlus, Loader2 } from 'lucide-react';
 
 const registerSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
+  email: z.string().email('Invalid email address').min(1, 'Email is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
   role: z.enum(['admin', 'user'], { required_error: 'Role is required' }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
-  path: ['confirmPassword'], // path of error
+  path: ['confirmPassword'],
 });
 
 
 export default function RegisterForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = React.useState(false);
+  const { register, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
+  const [isSubmittingForm, setIsSubmittingForm] = React.useState(false);
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: '',
+      email: '',
       password: '',
       confirmPassword: '',
-      role: undefined, // Initially no role selected
+      role: 'user' as UserRole,
     },
   });
+  
+  React.useEffect(() => {
+    if (isAuthenticated && !authIsLoading) {
+      router.push('/'); 
+      router.refresh();
+    }
+  }, [isAuthenticated, authIsLoading, router]);
 
   async function onSubmit(values: z.infer<typeof registerSchema>) {
-    setIsLoading(true);
-    form.clearErrors(); // Clear previous errors
-
-    let response: Response | null = null; 
+    setIsSubmittingForm(true);
+    form.clearErrors();
 
     try {
-       // Exclude confirmPassword before sending to API
-      const { confirmPassword, ...payload } = values;
-
-      response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const responseText = await response.text();
-      let data;
-
-      try {
-        data = JSON.parse(responseText);
-      } catch (jsonError) {
-        console.error('API did not return valid JSON:', jsonError);
-        console.error('Raw API response text:', responseText); 
-        if (responseText.trim().toLowerCase().startsWith('<!doctype html')) {
-             throw new Error('Server returned an HTML error page instead of JSON. Check server logs.');
-        } else {
-             const statusText = response?.statusText ? ` (${response.statusText})` : '';
-             throw new Error(`Failed to parse server response (Status: ${response?.status}${statusText}). Response was not valid JSON.`);
-        }
-      }
-
-      if (!response.ok) {
-        if (data.errors) {
-             Object.entries(data.errors as Record<string, string[]>).forEach(([field, messages]) => {
-                 form.setError(field as keyof z.infer<typeof registerSchema>, {
-                     type: 'server',
-                     message: messages.join(', '),
-                 });
-             });
-        }
-         throw new Error(data.message || `Registration failed with status: ${response.status}`);
-      }
-
+      await register(values.email, values.password, values.role);
+      // onAuthStateChanged in store handles setting isAuthenticated.
+      // useEffect above handles redirect.
       toast({
         title: 'Registration Successful',
-        description: 'You can now log in with your credentials.',
+        description: 'Your account has been created. You are now logged in.',
       });
-
-      router.push('/login'); 
-
     } catch (error: any) {
-      console.error('Registration error:', error);
-
-      let toastDescription = error.message || 'An unexpected error occurred.';
-      if (!error.message && response && !response.ok) {
-        toastDescription = `Server responded with status ${response.status}.`;
+      console.error('Registration form error:', error);
+      let errorMessage = 'An unexpected error occurred.';
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            errorMessage = 'This email address is already in use.';
+            form.setError('email', { type: 'server', message: errorMessage });
+            break;
+          case 'auth/weak-password':
+            errorMessage = 'The password is too weak (at least 6 characters).';
+            form.setError('password', { type: 'server', message: errorMessage });
+            break;
+          case 'auth/invalid-email':
+            errorMessage = 'The email address is not valid.';
+            form.setError('email', { type: 'server', message: errorMessage });
+            break;
+          default:
+            errorMessage = error.message || 'Registration failed.';
+        }
+      } else {
+        errorMessage = error.message || 'Registration failed.';
       }
       
-      // Provide a more specific message if the known server configuration error occurs
-      if (error.message === 'Server configuration error. Please contact support.') {
-        toastDescription = 'Registration failed due to a server configuration issue. Please check the server logs for more details (e.g., Firebase Admin SDK initialization problems).';
-      }
-
       toast({
         title: 'Registration Failed',
-        description: toastDescription,
+        description: errorMessage,
         variant: 'destructive',
       });
-      
-       if (!form.formState.errors.username && !form.formState.errors.password && !form.formState.errors.confirmPassword && !form.formState.errors.role) {
+       if (!form.formState.errors.email && !form.formState.errors.password && !form.formState.errors.confirmPassword && !form.formState.errors.role) {
           form.setError('root.serverError', {
              type: 'server',
-             message: toastDescription 
+             message: errorMessage
           });
        }
     } finally {
-      setIsLoading(false);
+      setIsSubmittingForm(false);
     }
   }
+  
+  const displayLoading = authIsLoading || isSubmittingForm;
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="username"
+          name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input placeholder="choose_a_username" {...field} disabled={isLoading} />
+                <Input type="email" placeholder="you@example.com" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -158,7 +141,7 @@ export default function RegisterForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="min. 6 characters" {...field} disabled={isLoading} />
+                <Input type="password" placeholder="min. 6 characters" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -171,7 +154,7 @@ export default function RegisterForm() {
             <FormItem>
               <FormLabel>Confirm Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="re-type password" {...field} disabled={isLoading} />
+                <Input type="password" placeholder="re-type password" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -183,7 +166,7 @@ export default function RegisterForm() {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Role</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoading}>
+              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={displayLoading}>
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue placeholder="Select a role" />
@@ -206,12 +189,11 @@ export default function RegisterForm() {
                  {form.formState.errors.root.serverError.message}
              </p>
          )}
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          {isLoading ? 'Registering...' : 'Register'}
+        <Button type="submit" className="w-full" disabled={displayLoading}>
+          {displayLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" /> }
+          {displayLoading ? 'Registering...' : 'Register'}
         </Button>
       </form>
     </Form>
   );
 }
-

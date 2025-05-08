@@ -7,18 +7,17 @@ export type Product = {
   serverId?: string; // Optional: Identifier for the server where the product is located
 };
 
-// Define the structure for a User
-export type User = {
-  id: string; // Firestore document ID
-  username: string;
-  passwordHash: string; // Store hashed password, never plain text
-  role: 'admin' | 'user';
+export type UserRole = 'admin' | 'user';
+
+// Define the structure for a User stored in Firestore
+export type UserFirestoreData = {
+  uid: string; // Firebase Auth UID, matches document ID
+  email: string | null; // Email from Firebase Auth
+  role: UserRole;
+  createdAt?: any; // Firestore ServerTimestamp
+  // Add any other profile information you want to store
 };
 
-// Type for session payload (stored in JWT)
-export type SessionPayload = {
-  userId: string;
-  username: string;
-  role: User['role'];
-  exp?: number; // Expiration timestamp
-};
+
+// SessionPayload is no longer needed with Firebase Auth handling sessions.
+// If you pass ID tokens to backend, you might define a type for the decoded token.

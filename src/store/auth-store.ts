@@ -1,148 +1,160 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware'
-import type { UserRole } from '@/lib/types'; // Assuming UserRole is 'admin' | 'user' | 'guest'
+import { persist, createJSONStorage, devtools } from 'zustand/middleware';
+import type { User as FirebaseUser } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import type { UserRole, UserFirestoreData } from '@/lib/types';
 
 interface AuthState {
-  username: string | null;
-  userRole: UserRole | 'guest'; // Use 'guest' for logged-out state
+  firebaseUser: FirebaseUser | null;
+  email: string | null;
+  uid: string | null;
+  userRole: UserRole | 'guest';
   isAuthenticated: boolean;
-  login: (username: string, role: UserRole) => void; // Called after successful API login
-  logout: () => Promise<void>; // Handles API call and state update
-  checkAuthStatus: () => void; // Optional: Check status on app load
+  isLoading: boolean; // To handle async auth state loading
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, role: UserRole) => Promise<void>;
+  logout: () => Promise<void>;
+  _updateAuthData: (user: FirebaseUser | null, role?: UserRole) => void; // Internal helper
+  _fetchUserRole: (uid: string) => Promise<UserRole>; // Internal helper to fetch role
 }
 
-// Function to attempt decoding JWT - run only on client-side
-const decodeToken = (): { username: string; role: UserRole } | null => {
-    if (typeof window === 'undefined') return null; // Prevent server-side execution
-
-    // This is a simplified check. In a real app, you'd verify the token
-    // using a library like jwt-decode ONLY FOR CLIENT-SIDE CONVENIENCE,
-    // but rely on the backend/middleware for actual security verification.
-    // NEVER trust client-side decoding for authorization.
-    try {
-        // Example using jwt-decode (install if needed: npm install jwt-decode)
-        // import { jwtDecode } from 'jwt-decode';
-        // const token = document.cookie.split('; ').find(row => row.startsWith('auth_token='))?.split('=')[1];
-        // if (!token) return null;
-        // const decoded: { username: string; role: UserRole, exp: number } = jwtDecode(token);
-        // // Optional: Check expiration client-side (though backend MUST verify)
-        // if (decoded.exp * 1000 < Date.now()) {
-        //    console.warn("Client-side token expired");
-        //    // Clear cookie manually if needed, or let backend handle expiry
-        //    document.cookie = 'auth_token=; Max-Age=0; path=/;';
-        //    return null;
-        // }
-        // return { username: decoded.username, role: decoded.role };
-
-        // Placeholder: Simulate getting data perhaps from localStorage or initial props
-        // In this setup, we rely on the middleware and API setting the cookie,
-        // and the AuthControls component to fetch initial state if needed.
-         return null;
-
-    } catch (error) {
-        console.error("Error decoding token client-side:", error);
-        // Clear invalid token cookie?
-        // document.cookie = 'auth_token=; Max-Age=0; path=/;';
-        return null;
-    }
+const initialAuthState = {
+  firebaseUser: null,
+  email: null,
+  uid: null,
+  userRole: 'guest' as UserRole | 'guest',
+  isAuthenticated: false,
+  isLoading: true, // Start in loading state until first auth check
 };
 
-
 export const useAuthStore = create<AuthState>()(
+  devtools( // Optional: For Zustand devtools
     persist(
-        (set, get) => ({
-            username: null,
-            userRole: 'guest',
-            isAuthenticated: false,
+      (set, get) => ({
+        ...initialAuthState,
 
-            login: (username, role) => {
-                console.log(`AuthStore: Logging in user ${username} with role ${role}`);
-                set({
-                    username,
-                    userRole: role,
-                    isAuthenticated: true,
-                });
-            },
+        login: async (email, password) => {
+          set({ isLoading: true });
+          try {
+            await signInWithEmailAndPassword(auth, email, password);
+            // onAuthStateChanged will handle setting user and fetching role
+          } catch (error: any) {
+            set({ isLoading: false });
+            console.error('Firebase login error:', error);
+            throw error;
+          }
+        },
 
-            logout: async () => {
-                console.log("AuthStore: Logging out user");
-                try {
-                    // Call the logout API endpoint
-                    const response = await fetch('/api/auth/logout', { method: 'POST' });
-                    if (!response.ok) {
-                        console.error('Logout API call failed');
-                        // Decide if you still want to clear state client-side
-                    }
-                } catch (error) {
-                    console.error('Error during logout API call:', error);
-                } finally {
-                    // Always clear client-side state regardless of API call success/failure
-                    set({
-                        username: null,
-                        userRole: 'guest',
-                        isAuthenticated: false,
-                    });
-                     // Manually clear potentially persisted state if needed
-                     localStorage.removeItem('auth-storage'); // Adjust key based on persist config
-                }
-            },
+        register: async (email, password, role) => {
+          set({ isLoading: true });
+          try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const firebaseUser = userCredential.user;
 
-            // This function is tricky with server components.
-            // It's better to fetch auth status within components/pages
-            // using server-side props or client-side effects based on cookies.
-            checkAuthStatus: () => {
-                 if (typeof window === 'undefined') return; // Client-side only
+            const userDocRef = doc(db, 'users', firebaseUser.uid);
+            const userData: UserFirestoreData = {
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              role: role,
+              createdAt: serverTimestamp(),
+            };
+            await setDoc(userDocRef, userData);
+            
+            // onAuthStateChanged will handle the rest
+            // We can optimistically update role here if needed, but listener is source of truth
+            // get()._updateAuthData(firebaseUser, role); // Optimistic update
+          } catch (error: any) {
+            set({ isLoading: false });
+            console.error('Firebase registration error:', error);
+            throw error;
+          }
+        },
 
-                 // Re-check cookie on client-side, useful for SPA navigations
-                 // but middleware handles the initial server-side protection.
-                 const tokenExists = document.cookie.includes('auth_token=');
+        logout: async () => {
+          set({ isLoading: true });
+          try {
+            await signOut(auth);
+            // onAuthStateChanged will clear user state
+          } catch (error) {
+            console.error('Firebase logout error:', error);
+            // Even if Firebase signOut fails, clear client state via listener
+            set({ ...initialAuthState, isLoading: false }); // Fallback to ensure logged out state
+          }
+        },
 
-                 if (!tokenExists && get().isAuthenticated) {
-                      console.log("AuthStore: Token missing, logging out client-side.");
-                      // If the cookie is gone but state says logged in, force logout
-                      get().logout();
-                 } else if (tokenExists && !get().isAuthenticated) {
-                     // If token exists but state is logged out (e.g., after refresh with persisted state)
-                     // Attempt to decode - INSECURE for authorization, just for UI state
-                     const decoded = decodeToken();
-                     if (decoded) {
-                         console.log("AuthStore: Rehydrating auth state from token.");
-                         set({ username: decoded.username, userRole: decoded.role, isAuthenticated: true });
-                     } else {
-                         // Invalid or expired token found during check
-                          console.log("AuthStore: Invalid/Expired token found during check, ensuring logout state.");
-                         if (get().isAuthenticated) { // Ensure logout state if token is bad
-                            get().logout(); // This will also clear the cookie via API potentially
-                         }
-                     }
-                 }
-            },
+        _fetchUserRole: async (uid: string): Promise<UserRole> => {
+          try {
+            const userDocRef = doc(db, 'users', uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+              const userData = userDocSnap.data() as UserFirestoreData;
+              return userData.role;
+            } else {
+              console.warn('User document not found in Firestore for UID:', uid);
+              return 'user'; // Default to 'user' if no role doc found (or handle as error)
+            }
+          } catch (error) {
+            console.error('Error fetching user role from Firestore:', error);
+            return 'user'; // Fallback on error
+          }
+        },
+        
+        _updateAuthData: (fbUser, roleOverride) => {
+          if (fbUser) {
+            set(async (state) => {
+              const role = roleOverride || (await get()._fetchUserRole(fbUser.uid));
+              return {
+                firebaseUser: fbUser,
+                email: fbUser.email,
+                uid: fbUser.uid,
+                userRole: role,
+                isAuthenticated: true,
+                isLoading: false,
+              };
+            });
+          } else {
+            set({ ...initialAuthState, isLoading: false });
+          }
+        },
+      }),
+      {
+        name: 'auth-firebase-storage',
+        storage: createJSONStorage(() => localStorage),
+        partialize: (state) => ({
+          // Only persist minimal, non-sensitive data.
+          // isLoading will be true on app load until onAuthStateChanged fires.
+          // email: state.email, // Example: could persist email for quick display
         }),
-        {
-            name: 'auth-storage', // Name for localStorage key
-            storage: createJSONStorage(() => localStorage), // Use localStorage
-             // Only persist a subset of the state if needed
-             // partialize: (state) => ({ isAuthenticated: state.isAuthenticated, userRole: state.userRole, username: state.username }),
-             // Skip hydration on server
-            // skipHydration: true,
-             onRehydrateStorage: (state) => {
-                 console.log("AuthStore: Hydration finished.");
-                 // You could potentially run checkAuthStatus here, but be careful about client/server mismatch
-                 // return (state, error) => {
-                 //    if (error) {
-                 //        console.error("AuthStore: An error occurred during hydration", error);
-                 //    } else {
-                 //        console.log("AuthStore: Hydration finished.");
-                 //        // state?.checkAuthStatus?.(); // Run check after hydration
-                 //    }
-                 // }
-             }
-        }
-    )
+        onRehydrateStorage: () => {
+          return (state) => {
+            if (state) state.isLoading = true; // Ensure loading on rehydration
+          };
+        },
+      }
+    ),
+    { name: "AuthStore" } // Name for devtools
+  )
 );
 
-// Initial check on client-side load (consider moving to a root client component)
-if (typeof window !== 'undefined') {
-    // useAuthStore.getState().checkAuthStatus();
-    // Instead of immediate check, let components handle fetching/checking
+// Initialize Firebase onAuthStateChanged listener
+// This should run once when the app/store is loaded on the client-side
+if (typeof window !== 'undefined' && auth) {
+  onAuthStateChanged(auth, async (user) => {
+    const storeUpdater = useAuthStore.getState()._updateAuthData;
+    if (user) {
+      storeUpdater(user); // This will also trigger role fetch
+    } else {
+      storeUpdater(null);
+    }
+  }, (error) => {
+    console.error("onAuthStateChanged error:", error);
+    useAuthStore.getState()._updateAuthData(null);
+  });
 }

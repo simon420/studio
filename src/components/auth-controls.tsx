@@ -5,34 +5,30 @@ import * as React from 'react';
 import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { LogOut, User, ShieldCheck, LogIn } from 'lucide-react';
+import { LogOut, User, ShieldCheck, LogIn, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
 export default function AuthControls() {
-  const { username, userRole, isAuthenticated, logout } = useAuthStore();
+  const { email, userRole, isAuthenticated, logout, isLoading: authIsLoading } = useAuthStore();
   const router = useRouter();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
-
-   // Effect to check auth status when component mounts on the client
-   React.useEffect(() => {
-      // This is a simple check if the store thinks we are authenticated.
-      // More robust checks could involve verifying the token's presence/validity client-side if needed.
-      // useAuthStore.getState().checkAuthStatus(); // Re-enable if needed, but be cautious
-   }, []);
 
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
     try {
-      await logout(); // Call the logout action from the store (handles API + state)
+      await logout();
       toast({
         title: 'Logged Out',
         description: 'You have been successfully logged out.',
       });
-       router.push('/login'); // Redirect to login page
-       router.refresh(); // Refresh server components
+       // Redirect is handled by onAuthStateChanged listener setting isAuthenticated to false,
+       // which page.tsx or other protected components would react to.
+       // Forcing a push here can be redundant or conflict.
+       // router.push('/login');
+       // router.refresh(); // Might not be needed if components correctly react to store changes
     } catch (error: any) {
       console.error('Logout failed:', error);
       toast({
@@ -60,15 +56,30 @@ export default function AuthControls() {
         return null;
     }
   };
+  
+  // Show loading state if auth is initially loading and not during a logout operation
+  if (authIsLoading && !isLoggingOut) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Authentication</CardTitle>
+        </CardHeader>
+        <CardContent className="flex items-center justify-center p-6">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          <p className="ml-2 text-muted-foreground">Checking auth status...</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Authentication</CardTitle>
-        <CardDescription className="flex items-center">
+        <CardDescription className="flex items-center min-h-[20px]"> {/* Added min-height */}
           {isAuthenticated ? (
             <>
-              Logged in as: <span className="font-semibold ml-1">{username}</span> ({userRole})
+              Logged in as: <span className="font-semibold ml-1">{email || 'User'}</span> ({userRole})
               {getRoleIcon()}
             </>
           ) : (
@@ -78,18 +89,14 @@ export default function AuthControls() {
       </CardHeader>
       <CardContent className="flex flex-col sm:flex-row gap-2">
         {isAuthenticated ? (
-          <Button onClick={handleLogout} variant="destructive" size="sm" disabled={isLoggingOut}>
-            <LogOut className="mr-2 h-4 w-4" />
+          <Button onClick={handleLogout} variant="destructive" size="sm" disabled={isLoggingOut || authIsLoading}>
+            {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <LogOut className="mr-2 h-4 w-4" />}
             {isLoggingOut ? 'Logging out...' : 'Logout'}
           </Button>
         ) : (
-           <Button onClick={handleLoginRedirect} variant="outline" size="sm">
+           <Button onClick={handleLoginRedirect} variant="outline" size="sm" disabled={authIsLoading}>
              <LogIn className="mr-2 h-4 w-4" /> Go to Login
            </Button>
-          // Optionally add a button to redirect to registration
-          // <Button onClick={() => router.push('/register')} variant="outline" size="sm">
-          //   <UserPlus className="mr-2 h-4 w-4" /> Register
-          // </Button>
         )}
       </CardContent>
     </Card>

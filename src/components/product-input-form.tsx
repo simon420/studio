@@ -16,74 +16,85 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useProductStore } from '@/store/product-store';
-import { useAuthStore } from '@/store/auth-store'; // Import auth store
-import { useToast } from '@/hooks/use-toast'; // Assuming useToast hook exists
-import { PlusCircle } from 'lucide-react';
+import { useAuthStore } from '@/store/auth-store';
+import { useToast } from '@/hooks/use-toast';
+import { PlusCircle, Loader2 } from 'lucide-react';
 
 
 const formSchema = z.object({
   name: z.string().min(2, {
     message: 'Product name must be at least 2 characters.',
   }),
-  code: z.coerce.number().int().positive({ // Coerce to number, ensure positive integer
+  code: z.coerce.number().int().positive({
     message: 'Product code must be a positive number.',
   }),
-  price: z.coerce.number().positive({ // Coerce to number, ensure positive
+  price: z.coerce.number().positive({
     message: 'Price must be a positive number.',
   }),
 });
 
 export default function ProductInputForm() {
   const addProduct = useProductStore((state) => state.addProduct);
-  // Get full auth state
-  const { isAuthenticated, userRole } = useAuthStore();
+  const { isAuthenticated, userRole, isLoading: authIsLoading } = useAuthStore();
   const { toast } = useToast();
-  const isAdmin = isAuthenticated && userRole === 'admin'; // Check if user is authenticated admin
+  const isAdmin = isAuthenticated && userRole === 'admin';
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      code: undefined, // Use undefined for number inputs initially
+      code: undefined,
       price: undefined,
     },
   });
 
-   // Reset form if user is no longer an admin or logs out
    React.useEffect(() => {
-     if (!isAdmin) {
+     if (!isAdmin && !authIsLoading) { // Only reset if not admin and auth is not loading
        form.reset();
      }
-   }, [isAdmin, form]);
+   }, [isAdmin, authIsLoading, form]);
 
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!isAdmin) return; // Prevent submission if not authenticated admin
+    if (!isAdmin) {
+        toast({
+            title: "Unauthorized",
+            description: "You must be an admin to add products.",
+            variant: "destructive",
+        });
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+        addProduct({ // This action itself should be quick as it's client-side
+            name: values.name,
+            code: values.code,
+            price: values.price,
+        });
 
-    // Add the product to the store
-    addProduct({
-        name: values.name,
-        code: values.code,
-        price: values.price,
-    });
-
-    // Show success toast
-    toast({
-      title: "Product Added",
-      description: `"${values.name}" has been added successfully locally.`, // Clarify it's local
-    });
-
-    // Reset the form
-    form.reset();
+        toast({
+          title: "Product Added",
+          description: `"${values.name}" has been added successfully locally.`,
+        });
+        form.reset();
+    } catch (e) {
+        toast({
+          title: "Error",
+          description: "Could not add product.",
+          variant: "destructive",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
+  
+  const displayLoading = authIsLoading || isSubmitting;
 
-  // The parent component (`Home`) should already conditionally render this form
-  // only for admins, but we keep the disabled state as an extra layer.
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        {/* Disable the entire fieldset if not an admin */}
-        <fieldset disabled={!isAdmin} className="space-y-4">
+        <fieldset disabled={!isAdmin || displayLoading} className="space-y-4">
           <FormField
             control={form.control}
             name="name"
@@ -123,14 +134,21 @@ export default function ProductInputForm() {
               </FormItem>
             )}
           />
-           <Button type="submit" className="w-full" disabled={!isAdmin}>
-             <PlusCircle className="mr-2 h-4 w-4" /> Add Product
+           <Button type="submit" className="w-full" disabled={!isAdmin || displayLoading}>
+             {displayLoading && isAdmin ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+              {displayLoading && isAdmin ? 'Adding...' : 'Add Product'}
            </Button>
         </fieldset>
-         {!isAdmin && (
-             <p className="text-sm text-muted-foreground text-center">
+         {!isAdmin && !authIsLoading && ( // Only show message if auth check is complete
+             <p className="text-sm text-muted-foreground text-center pt-2">
                  Only administrators can add products.
              </p>
+         )}
+         {authIsLoading && ( // Show general loading if auth is still loading
+            <div className="flex items-center justify-center pt-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <p className="ml-2 text-sm text-muted-foreground">Checking permissions...</p>
+            </div>
          )}
       </form>
     </Form>
