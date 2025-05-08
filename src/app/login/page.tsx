@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth-store';
-import { LogIn, Loader2, Info } from 'lucide-react';
+import { LogIn, Loader2 } from 'lucide-react'; // Changed Info to LogIn
 import Link from 'next/link';
 
 const loginSchema = z.object({
@@ -92,20 +93,39 @@ export default function LoginPage() {
   const displayLoading = authIsLoading || isSubmittingForm;
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 space-y-8">
+      {/* Application Description Header */}
+      <header className="text-center max-w-2xl">
+        <div className="mx-auto mb-4 flex items-center justify-center">
+            <Image
+                src="https://picsum.photos/80/80" // Placeholder, can be more specific
+                alt="Product Finder App Logo"
+                width={80}
+                height={80}
+                className="rounded-full shadow-md object-cover"
+                data-ai-hint="modern tech" // AI hint for image
+            />
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-3">
+          Welcome to Product Finder
+        </h1>
+        <p className="text-md sm:text-lg text-muted-foreground">
+           Product Finder is your go-to solution for efficiently managing and discovering products. 
+           Utilizing Next.js, Firebase Authentication, and Cloud Firestore for a seamless experience.
+        </p>
+      </header>
+
+      {/* Login Card */}
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <Info className="h-6 w-6" />
+            <LogIn className="h-6 w-6" /> {/* Changed icon to LogIn */}
           </div>
-          <CardTitle className="text-2xl font-bold">Login to Product Finder</CardTitle>
+          <CardTitle className="text-2xl font-bold">Login to Your Account</CardTitle> {/* Adjusted title */}
           <CardDescription className="text-muted-foreground">
             Enter your credentials to access your account.
           </CardDescription>
-          <CardDescription className="pt-2 text-sm text-muted-foreground/80">
-           Product Finder is your go-to solution for efficiently managing and discovering products. 
-           Utilizing Next.js, Firebase Authentication, and Cloud Firestore for a seamless experience.
-          </CardDescription>
+          {/* Application description removed from here */}
         </CardHeader>
         <CardContent>
           <Form {...form}>
