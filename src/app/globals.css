@@ -139,11 +139,11 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('https://picsum.photos/id/1015/1920/1080'); /* Landscape image */
+  background-image: url('https://picsum.photos/1920/1080?random&blur=2&data-ai-hint=digital+network'); /* Updated image URL and hint */
   background-size: cover;
   background-position: center;
-  filter: blur(8px) brightness(0.8);
-  -webkit-filter: blur(8px) brightness(0.8); /* For Safari */
+  filter: blur(8px) brightness(0.7); /* Adjusted brightness */
+  -webkit-filter: blur(8px) brightness(0.7); /* For Safari */
   transform: scale(1.1); /* To avoid edge artifacts from blur */
   z-index: 1;
 }
@@ -157,9 +157,9 @@ html {
   bottom: 0;
   background: linear-gradient(
     -45deg, 
-    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.25), 
-    hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.15),
-    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.05)
+    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.35), /* Increased opacity */
+    hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.25), /* Increased opacity */
+    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.15) /* Increased opacity */
   );
   background-size: 400% 400%;
   animation: loginGradientAnimation 20s ease infinite;
@@ -175,4 +175,74 @@ html {
 .login-page-content-grid {
   position: relative;
   z-index: 3;
+}
+
+/* Main Application Page Styles */
+.main-app-container {
+  position: relative;
+  min-height: 100vh;
+  overflow: hidden; /* Prevent background bleed */
+}
+
+.main-app-container::before {
+  content: "";
+  position: fixed; /* Use fixed to cover the whole viewport and stay during scroll */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('https://picsum.photos/1920/1080?random&blur=1&data-ai-hint=abstract+texture'); /* Subtle texture */
+  background-size: cover;
+  background-position: center;
+  filter: blur(10px) brightness(0.9) saturate(0.8);
+  -webkit-filter: blur(10px) brightness(0.9) saturate(0.8);
+  transform: scale(1.15); /* Slightly more zoom to avoid edges with blur */
+  z-index: -1; /* Behind all content */
+  opacity: 0.3; /* Make it subtle */
+}
+
+.main-app-content {
+  position: relative;
+  z-index: 1;
+  background-color: hsla(var(--background-h, 0), var(--background-s, 0%), var(--background-l, 96.1%), 0.8); /* Semi-transparent background to let texture show through */
+  backdrop-filter: blur(2px); /* Optional: subtle blur on content background */
+  -webkit-backdrop-filter: blur(2px);
+  min-height: 100vh; /* Ensure content area also covers viewport height */
+  padding: 1rem; /* Add some padding if needed, or manage through child components */
+}
+
+.dark .main-app-content {
+    background-color: hsla(var(--background-h, 0), var(--background-s, 0%), var(--background-l, 3.9%), 0.85); /* Darker for dark mode */
+}
+
+/* Ensure cards in main app also have a slightly transparent background if desired */
+.main-app-content .card {
+  background-color: hsla(var(--card-h, 0), var(--card-s, 0%), var(--card-l, 100%), 0.9); /* Example for light mode cards */
+  /* backdrop-filter: blur(1px); */ /* Be cautious with too much backdrop-filter, can impact performance */
+}
+.dark .main-app-content .card {
+  background-color: hsla(var(--card-h, 0), var(--card-s, 0%), var(--card-l, 3.9%), 0.9); /* Example for dark mode cards */
+}
+
+
+/* Sticky header in tables */
+.sticky-table-header thead th {
+    position: sticky;
+    top: 0;
+    z-index: 10; /* Ensure header is above scrollable content */
+    /* background-color: hsl(var(--secondary)); */ /* Original background */
+    background-color: hsla(var(--secondary-h, 0), var(--secondary-s, 0%), var(--secondary-l, 92%), 0.8); /* Semi-transparent secondary */
+    backdrop-filter: blur(4px); /* Blur effect for sticky header */
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.dark .sticky-table-header thead th {
+    /* background-color: hsl(var(--secondary)); */ /* Original dark background */
+    background-color: hsla(var(--secondary-h, 0), var(--secondary-s, 0%), var(--secondary-l, 14.9%), 0.85); /* Semi-transparent dark secondary */
+}
+
+/* Ensure ScrollArea content is above the main app pseudo-element */
+.main-app-content .scroll-area-content-wrapper {
+    position: relative;
+    z-index: 5; /* Needs to be higher than main-app-container::before */
 }

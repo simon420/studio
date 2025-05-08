@@ -23,17 +23,32 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
+  params, // Next.js provides params here if layout is part of a route group
 }: Readonly<{
   children: React.ReactNode;
+  params?: any; // Define more specifically if needed, e.g., { slug: string }
 }>) {
+  // This is a simple way to check if we are on login/register.
+  // For more complex routing, consider using Next.js's path-based logic or context.
+  // This example assumes login/register are top-level routes.
+  // A more robust way might involve checking `usePathname()` in a client component wrapper if needed.
+  // However, for layout, we rely on structure or a simpler check.
+  // This check is conceptual; `params` might not directly give page name.
+  // The best approach is to apply .login-page-container directly in login/register page.tsx.
+  // Here, we conditionally wrap other pages.
+
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`} // Use font-sans utility class
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >
-          {/* No explicit AuthProvider needed when using Zustand directly like this */}
-          {children}
-          <Toaster /> {/* Add Toaster here */}
+        {/* Children will be either login/register page (with its own .login-page-container) 
+            OR the main app content which will be wrapped below.
+            This structure relies on login/register pages NOT being nested under a layout that applies .main-app-container.
+            If they were, we'd need more complex conditional logic or separate layouts.
+        */}
+        {children}
+        <Toaster />
       </body>
     </html>
   );

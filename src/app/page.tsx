@@ -34,7 +34,7 @@ export default function Home() {
   // show a loading/redirecting message. The useEffect above handles the actual redirect.
   if (authIsLoading || (!authIsLoading && !isAuthenticated)) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background"> {/* Ensure loading also has a background */}
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-3 text-lg text-muted-foreground">
           {authIsLoading ? 'Loading application...' : 'Redirecting to login...'}
@@ -46,94 +46,97 @@ export default function Home() {
   // If we reach here, authIsLoading is false and isAuthenticated is true.
   // Render the authenticated application content.
   return (
-    <div className="container mx-auto p-4 md:p-8">
-      <header className="mb-8 flex flex-col sm:flex-row items-center justify-center sm:justify-start text-center sm:text-left">
-        <div className="relative w-16 h-16 sm:w-20 sm:h-20 mr-0 sm:mr-4 mb-2 sm:mb-0 rounded-full overflow-hidden shadow-md">
-            <Image
-                src="https://picsum.photos/80/80" 
-                alt="Product Finder Logo"
-                width={80}
-                height={80}
-                className="object-cover"
-                data-ai-hint="product design" // Updated data-ai-hint
-            />
-        </div>
-        <div>
-            <h1 className="text-3xl font-bold text-primary">Product Finder</h1>
-            <p className="text-muted-foreground">
-            Search for products using Firebase Autentication and Cloud Firestore Database
-            </p>
-        </div>
-      </header>
+    <div className="main-app-container">
+      <div className="main-app-content">
+        <div className="container mx-auto p-4 md:p-8">
+          <header className="mb-8 flex flex-col sm:flex-row items-center justify-center sm:justify-start text-center sm:text-left">
+            <div className="relative w-16 h-16 sm:w-20 sm:h-20 mr-0 sm:mr-4 mb-2 sm:mb-0 rounded-full overflow-hidden shadow-md">
+                <Image
+                    src="https://picsum.photos/80/80?data-ai-hint=product+design" 
+                    alt="Product Finder Logo"
+                    width={80}
+                    height={80}
+                    className="object-cover"
+                    data-ai-hint="product design" 
+                />
+            </div>
+            <div>
+                <h1 className="text-3xl font-bold text-primary">Product Finder</h1>
+                <p className="text-muted-foreground">
+                Search for products using Firebase Autentication and Cloud Firestore Database
+                </p>
+            </div>
+          </header>
 
-      <div className="mb-8">
-        <AuthControls />
+          <div className="mb-8">
+            <AuthControls />
+          </div>
+
+          <main className="space-y-8">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              
+              {/* Section 1: Add New Product (Admin Only) or User Info */}
+              {userRole === 'admin' ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Add New Product</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ProductInputForm />
+                  </CardContent>
+                </Card>
+              ) : ( // userRole === 'user'
+                <Card className="h-full flex flex-col">
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <AlertCircle className="mr-2 h-5 w-5 text-primary" />
+                      Admin Feature
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex-grow flex items-center">
+                    <p className="text-sm text-muted-foreground">
+                      Adding new products is an exclusive feature for administrator accounts. As a user, you can search for existing products.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Section 2: My Added Products (Admin Only) or Placeholder */}
+              {userRole === 'admin' ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>My Added Products</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <AdminProductsList />
+                  </CardContent>
+                </Card>
+              ) : ( // userRole === 'user'
+                <Card className="h-full flex flex-col">
+                  <CardHeader className="text-center">
+                      <PackageSearch className="h-10 w-10 mx-auto mb-2 text-primary" />
+                      <CardTitle className="text-lg">Your Product Contributions</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-center flex-grow flex flex-col justify-center">
+                    <p className="text-sm text-muted-foreground">
+                      Administrators can view and manage products they've added in this section.
+                      Users do not have product contributions to display here.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Section 3: Search Products & Results */}
+            <SearchResults /> 
+          </main>
+
+          <footer className="mt-12 pt-4 border-t text-center text-muted-foreground text-sm">
+            Product Finder &copy; {new Date().getFullYear()}
+          </footer>
+        </div>
       </div>
-
-      <main className="space-y-8">
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8"> {/* Adjusted grid from md:grid-cols-3 to md:grid-cols-2 */}
-          
-          {/* Section 1: Add New Product (Admin Only) or User Info */}
-          {userRole === 'admin' ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Add New Product</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProductInputForm />
-              </CardContent>
-            </Card>
-          ) : ( // userRole === 'user'
-            <Card className="h-full flex flex-col"> {/* Make it a Card for consistency */}
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <AlertCircle className="mr-2 h-5 w-5 text-primary" />
-                  Admin Feature
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-grow flex items-center">
-                <p className="text-sm text-muted-foreground">
-                  Adding new products is an exclusive feature for administrator accounts. As a user, you can search for existing products.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Section 2: My Added Products (Admin Only) or Placeholder */}
-          {userRole === 'admin' ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>My Added Products</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <AdminProductsList />
-              </CardContent>
-            </Card>
-          ) : ( // userRole === 'user'
-            <Card className="h-full flex flex-col">
-              <CardHeader className="text-center">
-                  <PackageSearch className="h-10 w-10 mx-auto mb-2 text-primary" />
-                  <CardTitle className="text-lg">Your Product Contributions</CardTitle>
-              </CardHeader>
-              <CardContent className="text-center flex-grow flex flex-col justify-center">
-                <p className="text-sm text-muted-foreground">
-                  Administrators can view and manage products they've added in this section.
-                  Users do not have product contributions to display here.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        {/* Section 3: Search Products & Results */}
-        <SearchResults /> 
-      </main>
-
-      <footer className="mt-12 pt-4 border-t text-center text-muted-foreground text-sm">
-        Product Finder &copy; {new Date().getFullYear()}
-      </footer>
     </div>
   );
 }
-
