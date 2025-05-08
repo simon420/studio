@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth-store';
-import { LogIn, Loader2 } from 'lucide-react'; // Changed Info to LogIn
+import { LogIn, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 const loginSchema = z.object({
@@ -33,8 +33,8 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
-  const { login, isLoading: authIsLoading, isAuthenticated } = useAuthStore(); // isLoading from store
-  const [isSubmittingForm, setIsSubmittingForm] = React.useState(false); // Local submitting state
+  const { login, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
+  const [isSubmittingForm, setIsSubmittingForm] = React.useState(false);
 
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
@@ -44,12 +44,11 @@ export default function LoginPage() {
     },
   });
 
-  // Redirect if user is already authenticated
   React.useEffect(() => {
-    if (isAuthenticated && !authIsLoading) { // Check authIsLoading to prevent premature redirect
+    if (isAuthenticated && !authIsLoading) {
       const redirectPath = searchParams?.get('redirectedFrom') || '/';
       router.push(redirectPath);
-      router.refresh(); // Refresh server components if needed
+      router.refresh();
     }
   }, [isAuthenticated, authIsLoading, router, searchParams]);
 
@@ -57,8 +56,6 @@ export default function LoginPage() {
     setIsSubmittingForm(true);
     try {
       await login(values.email, values.password);
-      // onAuthStateChanged in the store will handle updating isAuthenticated.
-      // The useEffect above will handle the redirect.
       toast({
         title: 'Login Submitted',
         description: 'Please wait while we verify your credentials.',
@@ -66,11 +63,11 @@ export default function LoginPage() {
     } catch (error: any) {
       console.error('Login page error:', error);
       let errorMessage = 'An unexpected error occurred. Please check your email and password.';
-      if (error.code) { // Firebase auth errors
+      if (error.code) {
         switch (error.code) {
             case 'auth/user-not-found':
             case 'auth/wrong-password':
-            case 'auth/invalid-credential': // More generic for email/password combo
+            case 'auth/invalid-credential':
                  errorMessage = 'Invalid email or password.';
                  break;
             case 'auth/invalid-email':
@@ -93,83 +90,88 @@ export default function LoginPage() {
   const displayLoading = authIsLoading || isSubmittingForm;
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 space-y-8">
-      {/* Application Description Header */}
-      <header className="text-center max-w-2xl">
-        <div className="mx-auto mb-4 flex items-center justify-center">
-            <Image
-                src="https://picsum.photos/80/80" // Placeholder, can be more specific
-                alt="Product Finder App Logo"
-                width={80}
-                height={80}
-                className="rounded-full shadow-md object-cover"
-                data-ai-hint="modern tech" // AI hint for image
-            />
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="grid md:grid-cols-2 gap-x-12 gap-y-8 max-w-5xl w-full items-center">
+        {/* Left Column: Welcome Message */}
+        <div className="flex flex-col justify-center items-center md:items-start text-center md:text-left">
+          <header className="max-w-md"> {/* Adjusted max-width for better balance */}
+            <div className="mx-auto md:mx-0 mb-6 flex items-center justify-center md:justify-start">
+                <Image
+                    src="https://picsum.photos/100/100" 
+                    alt="Product Finder App Logo"
+                    width={100} 
+                    height={100}
+                    className="rounded-full shadow-lg object-cover"
+                    data-ai-hint="modern tech"
+                />
+            </div>
+            <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-4">
+              Welcome to Product Finder
+            </h1>
+            <p className="text-lg lg:text-xl text-muted-foreground">
+               Product Finder is your go-to solution for efficiently managing and discovering products. 
+               Utilizing Next.js, Firebase Authentication, and Cloud Firestore for a seamless experience.
+            </p>
+          </header>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-3">
-          Welcome to Product Finder
-        </h1>
-        <p className="text-md sm:text-lg text-muted-foreground">
-           Product Finder is your go-to solution for efficiently managing and discovering products. 
-           Utilizing Next.js, Firebase Authentication, and Cloud Firestore for a seamless experience.
-        </p>
-      </header>
 
-      {/* Login Card */}
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-            <LogIn className="h-6 w-6" /> {/* Changed icon to LogIn */}
-          </div>
-          <CardTitle className="text-2xl font-bold">Login to Your Account</CardTitle> {/* Adjusted title */}
-          <CardDescription className="text-muted-foreground">
-            Enter your credentials to access your account.
-          </CardDescription>
-          {/* Application description removed from here */}
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="you@example.com" {...field} disabled={displayLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} disabled={displayLoading} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={displayLoading}>
-                {displayLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                {displayLoading ? 'Logging in...' : 'Login'}
-              </Button>
-            </form>
-          </Form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
-            Don't have an account?{' '}
-            <Link href="/register" className="underline hover:text-primary">
-              Register here
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
+        {/* Right Column: Login Card */}
+        <div className="flex items-center justify-center w-full">
+          <Card className="w-full max-w-md shadow-xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <LogIn className="h-7 w-7" />
+              </div>
+              <CardTitle className="text-2xl font-bold">Login to Your Account</CardTitle>
+              <CardDescription className="text-muted-foreground">
+                Enter your credentials to access your account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="you@example.com" {...field} disabled={displayLoading} className="text-base"/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="••••••••" {...field} disabled={displayLoading} className="text-base"/>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full py-3 text-base" disabled={displayLoading}>
+                    {displayLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <LogIn className="mr-2 h-5 w-5" />}
+                    {displayLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+                </form>
+              </Form>
+              <p className="mt-6 text-center text-sm text-muted-foreground">
+                Don't have an account?{' '}
+                <Link href="/register" className="font-semibold underline hover:text-primary">
+                  Register here
+                </Link>
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
