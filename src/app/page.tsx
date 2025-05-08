@@ -14,7 +14,7 @@ import SearchResults from '@/components/search-results';
 import AuthControls from '@/components/auth-controls';
 import AdminProductsList from '@/components/admin-products-list'; // Import the new component
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2, PackageSearch } from 'lucide-react'; // Added PackageSearch
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function Home() {
@@ -56,9 +56,11 @@ export default function Home() {
         <AuthControls />
       </div>
 
-      <main className="grid grid-cols-1 gap-8 md:grid-cols-3">
-        <div className="md:col-span-1 space-y-8">
-          {/* Content for authenticated users */}
+      <main className="space-y-8">
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          
+          {/* Section 1: Search Products */}
           <Card>
             <CardHeader>
               <CardTitle>Search Products</CardTitle>
@@ -68,41 +70,60 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {userRole === 'admin' && (
-            <>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Add New Product</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ProductInputForm />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>My Added Products</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <AdminProductsList />
-                </CardContent>
-              </Card>
-            </>
+          {/* Section 2: Add New Product (Admin Only) or User Info */}
+          {userRole === 'admin' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Add New Product</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ProductInputForm />
+              </CardContent>
+            </Card>
+          ) : ( // userRole === 'user'
+            <Card className="h-full flex flex-col"> {/* Make it a Card for consistency */}
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <AlertCircle className="mr-2 h-5 w-5 text-primary" />
+                  Admin Feature
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex-grow flex items-center">
+                <p className="text-sm text-muted-foreground">
+                  Adding new products is an exclusive feature for administrator accounts. As a user, you can search for existing products using the panel on the left.
+                </p>
+              </CardContent>
+            </Card>
           )}
-
-          {userRole === 'user' && (
-            <Alert variant="default">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>User Account</AlertTitle>
-              <AlertDescription>
-                You are logged in as a user. Only administrators can add new products.
-              </AlertDescription>
-            </Alert>
+          
+          {/* Section 3: My Added Products (Admin Only) or Placeholder */}
+          {userRole === 'admin' ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>My Added Products</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AdminProductsList />
+              </CardContent>
+            </Card>
+          ) : ( // userRole === 'user'
+            <Card className="h-full flex flex-col">
+              <CardHeader className="text-center">
+                  <PackageSearch className="h-10 w-10 mx-auto mb-2 text-primary" />
+                  <CardTitle className="text-lg">Your Product Contributions</CardTitle>
+              </CardHeader>
+              <CardContent className="text-center flex-grow flex flex-col justify-center">
+                <p className="text-sm text-muted-foreground">
+                  Administrators can view and manage products they've added in this section.
+                  Users do not have product contributions to display here.
+                </p>
+              </CardContent>
+            </Card>
           )}
         </div>
 
-        <div className="md:col-span-2">
-          <SearchResults />
-        </div>
+        {/* Section 4: Search Results */}
+        <SearchResults /> 
       </main>
 
       <footer className="mt-12 pt-4 border-t text-center text-muted-foreground text-sm">
