@@ -139,11 +139,13 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80&blur=3'); /* User-specified background image */
+  /* Placeholder mimicking user-provided image: binary, network, user icons, teal glow */
+  background-image: url('https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1920&q=80'); 
   background-size: cover;
   background-position: center;
-  filter: blur(6px) brightness(0.65) saturate(0.9); /* Slightly adjusted filter */
-  -webkit-filter: blur(6px) brightness(0.65) saturate(0.9); /* For Safari */
+  /* Adjusted filter to achieve darker, teal-tinted binary code look */
+  filter: blur(6px) brightness(0.6) saturate(1.5) hue-rotate(60deg); 
+  -webkit-filter: blur(6px) brightness(0.6) saturate(1.5) hue-rotate(60deg); /* For Safari */
   transform: scale(1.12); /* Adjusted scale */
   z-index: 1;
 }
@@ -259,3 +261,4 @@ html {
 }
 
     
+
