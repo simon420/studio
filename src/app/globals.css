@@ -52,6 +52,14 @@ body {
     --sidebar-accent-foreground: 180 100% 15%; /* Darker Teal */
     --sidebar-border: 0 0% 89.8%;
     --sidebar-ring: 180 100% 25.1%; /* Teal */
+
+    /* HSL components for primary and accent colors for easier use in hsla() */
+    --primary-h: 180;
+    --primary-s: 100%;
+    --primary-l: 25.1%;
+    --accent-h: 180;
+    --accent-s: 70%;
+    --accent-l: 40%;
   }
 
   .dark {
@@ -88,6 +96,13 @@ body {
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 180 70% 50%; /* Brighter Teal Ring */
+
+    --primary-h: 180;
+    --primary-s: 70%;
+    --primary-l: 50%;
+    --accent-h: 180;
+    --accent-s: 70%;
+    --accent-l: 30%;
   }
 }
 
@@ -105,4 +120,59 @@ body {
 /* Apply sans-serif font specifically using Geist */
 html {
   font-family: var(--font-geist-sans), sans-serif;
+}
+
+/* Login Page Specific Styles */
+.login-page-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* Important for pseudo-elements */
+}
+
+.login-page-container::before { /* For the blurred image */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url('https://picsum.photos/id/1015/1920/1080'); /* Landscape image */
+  background-size: cover;
+  background-position: center;
+  filter: blur(8px) brightness(0.8);
+  -webkit-filter: blur(8px) brightness(0.8); /* For Safari */
+  transform: scale(1.1); /* To avoid edge artifacts from blur */
+  z-index: 1;
+}
+
+.login-page-container::after { /* For a subtle animated gradient overlay */
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    -45deg, 
+    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.25), 
+    hsla(var(--accent-h), var(--accent-s), var(--accent-l), 0.15),
+    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.05)
+  );
+  background-size: 400% 400%;
+  animation: loginGradientAnimation 20s ease infinite;
+  z-index: 2;
+}
+
+@keyframes loginGradientAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.login-page-content-grid {
+  position: relative;
+  z-index: 3;
 }
