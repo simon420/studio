@@ -62,8 +62,8 @@ export default function SearchResults() {
                  <TableCaption className="py-4">
                    {filteredProducts.length > 0
                      ? `Showing ${filteredProducts.length} product(s).`
-                     : searchTerm
-                     ? `No products found for "${searchTerm}".`
+                     : searchTerm && filteredProducts.length === 0 
+                     ? `Your search for "${searchTerm}" yielded no results.` // Updated message
                      : 'Enter a search term or add products (if admin).'}
                  </TableCaption>
                  <TableHeader className="sticky top-0 bg-secondary z-10">

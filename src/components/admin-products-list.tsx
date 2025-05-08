@@ -90,8 +90,8 @@ export default function AdminProductsList() {
           <TableCaption className="py-4">
             {filteredAdminProducts.length > 0
               ? `Showing ${filteredAdminProducts.length} of your product(s).`
-              : adminSearchTerm
-              ? `No products found for "${adminSearchTerm}".`
+              : adminSearchTerm && filteredAdminProducts.length === 0
+              ? `Your search for "${adminSearchTerm}" yielded no results.` // Updated message
               : 'You have not added any products yet.'}
           </TableCaption>
           <TableHeader className="sticky top-0 bg-secondary z-10">
