@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PackageSearch, AlertCircle } from 'lucide-react';
+import { PackageSearch, AlertCircle, Info } from 'lucide-react'; // Added Info icon
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
 
 
@@ -99,7 +99,10 @@ export default function SearchResults() {
                    ) : (
                      <TableRow>
                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                         {/* Message "Enter a search term or add products (if admin)." removed as per request */}
+                         <div className="flex flex-col items-center justify-center gap-2">
+                           <Info className="h-8 w-8" />
+                           <span>The list is currently empty.</span>
+                         </div>
                        </TableCell>
                      </TableRow>
                    )}
