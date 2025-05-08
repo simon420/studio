@@ -2,12 +2,14 @@
 'use client'; 
 
 import * as React from 'react';
-import Link from 'next/link';
+// Link component is not used directly in this version of the page's logic for redirection
+// import Link from 'next/link'; 
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import SearchInput from '@/components/search-input';
 import ProductInputForm from '@/components/product-input-form';
-import RegisterForm from '@/components/register-form';
+// RegisterForm is not used on this page
+// import RegisterForm from '@/components/register-form'; 
 import SearchResults from '@/components/search-results';
 import AuthControls from '@/components/auth-controls';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -25,39 +27,21 @@ export default function Home() {
     }
   }, [authIsLoading, isAuthenticated, router]);
 
-  if (authIsLoading) {
+  // If auth is still loading, or if auth has loaded but user is not authenticated,
+  // show a loading/redirecting message. The useEffect above handles the actual redirect.
+  if (authIsLoading || (!authIsLoading && !isAuthenticated)) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-3 text-lg text-muted-foreground">Loading application...</p>
+        <p className="ml-3 text-lg text-muted-foreground">
+          {authIsLoading ? 'Loading application...' : 'Redirecting to login...'}
+        </p>
       </div>
     );
   }
 
-  // If not authenticated and not loading, this content might briefly show before redirect
-  // or if redirect fails. Consider a more robust "protected route" HOC if needed.
-  // For now, the useEffect handles the redirect.
-  if (!isAuthenticated) {
-    // This part will likely not be rendered due to the redirect,
-    // but it's a fallback or can be shown if redirect logic is changed.
-     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-md p-6">
-            <CardHeader>
-                <CardTitle className="text-center">Access Denied</CardTitle>
-                <CardDescription className="text-center">
-                    You need to be logged in to view this page. Redirecting to login...
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="flex justify-center">
-                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-
+  // If we reach here, authIsLoading is false and isAuthenticated is true.
+  // Render the authenticated application content.
   return (
     <div className="container mx-auto p-4 md:p-8">
       <header className="mb-8 text-center">
