@@ -139,7 +139,7 @@ html {
   left: 0;
   right: 0;
   bottom: 0;
-  background-image: url('https://picsum.photos/1920/1080?random=2&blur=3&data-ai-hint=corporate+technology'); /* New background image */
+  background-image: url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80&blur=3'); /* User-specified background image */
   background-size: cover;
   background-position: center;
   filter: blur(6px) brightness(0.65) saturate(0.9); /* Slightly adjusted filter */
