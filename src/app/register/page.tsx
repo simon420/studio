@@ -26,7 +26,7 @@ export default function RegisterPage() {
               />
             </div>
             <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-4">
-              Unisciti a Ricerca Prodotti
+              Unisciti
             </h1>
             <p className="text-lg lg:text-xl text-card-foreground/90">
               Crea il tuo account in pochi semplici passaggi per iniziare a scoprire e gestire i prodotti con facilità.
