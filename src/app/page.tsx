@@ -1,3 +1,4 @@
+
 // src/app/page.tsx
 'use client'; 
 
@@ -116,12 +117,11 @@ export default function Home() {
                 <Card className="h-full flex flex-col">
                   <CardHeader className="text-center">
                       <PackageSearch className="h-10 w-10 mx-auto mb-2 text-primary" />
-                      <CardTitle className="text-lg">I Tuoi Contributi di Prodotti</CardTitle>
+                      <CardTitle className="text-lg">Gestione Prodotti</CardTitle>
                   </CardHeader>
                   <CardContent className="text-center flex-grow flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground">
-                      Gli amministratori possono visualizzare e gestire i prodotti che hanno aggiunto in questa sezione.
-                      Gli utenti non hanno contributi di prodotti da visualizzare qui.
+                      Solo gli amministratori possono gestire i propri prodotti modificandoli ed eliminandoli.
                     </p>
                   </CardContent>
                 </Card>
