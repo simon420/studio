@@ -20,6 +20,15 @@ export type UserFirestoreData = {
   // Add any other profile information you want to store
 };
 
+export type AdminRequest = {
+    id: string;
+    email: string;
+    // Password should not be stored directly long-term, but is needed for creation
+    password?: string;
+    status: 'pending' | 'approved' | 'declined';
+    requestedAt: any; // Firestore Timestamp
+}
+
 
 // SessionPayload is no longer needed with Firebase Auth handling sessions.
 // If you pass ID tokens to backend, you might define a type for the decoded token.

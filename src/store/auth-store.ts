@@ -82,11 +82,18 @@ export const useAuthStore = create<AuthState>()(
         requestAdminRegistration: async (email, password) => {
           set({ isLoading: true });
           try {
+            // Check if a request for this email already exists
+            const q = query(collection(db, 'adminRequests'), where('email', '==', email), where('status', '==', 'pending'));
+            const existingRequests = await getDocs(q);
+            if (!existingRequests.empty) {
+                throw new Error('Una richiesta per questa email è già in attesa di approvazione.');
+            }
+            
             // We don't create the user. We just store the request.
             const requestRef = collection(db, 'adminRequests');
             await addDoc(requestRef, {
               email: email,
-              password: password, // Storing password is NOT recommended. This is a placeholder for a more secure flow.
+              password: password, // Storing password is NOT recommended for production. This is for the demo.
               status: 'pending',
               requestedAt: serverTimestamp(),
             });
