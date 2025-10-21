@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'; // Using Inter as a common sans-serif 
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster"; // Import Toaster
+import { Suspense } from "react";
 // import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider - Not needed with Zustand directly
 
 // Keep Geist fonts if preferred, but ensure a sans-serif is default
@@ -47,7 +48,9 @@ export default function RootLayout({
             This structure relies on login/register pages NOT being nested under a layout that applies .main-app-container.
             If they were, we'd need more complex conditional logic or separate layouts.
         */}
+        <Suspense>
         {children}
+        </Suspense>
         <Toaster />
       </body>
     </html>
