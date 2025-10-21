@@ -1,7 +1,8 @@
+
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
-import { getAuth, browserLocalPersistence, initializeAuth, connectAuthEmulator } from 'firebase/auth'; // Import Firebase Auth
+import { getAuth, browserLocalPersistence, initializeAuth } from 'firebase/auth';
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -11,7 +12,6 @@ const firebaseConfig = {
   storageBucket:  process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "product-finder-sis.firebasestorage.app",
   messagingSenderId:  process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "943639600743",
   appId:  process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:943639600743:web:e9cdeb179ddbb1202c3ec2",
-  // measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID // Optional
 };
 
 // Initialize Firebase
@@ -22,29 +22,28 @@ if (!getApps().length) {
   app = getApp();
 }
 
+// Default database
 const db = getFirestore(app);
 
+// Initialize sharded databases
+const dbShardA = getFirestore(app, 'shard-a');
+const dbShardB = getFirestore(app, 'shard-b');
+const dbShardC = getFirestore(app, 'shard-c');
+
+const shards = {
+  'shard-a': dbShardA,
+  'shard-b': dbShardB,
+  'shard-c': dbShardC,
+};
+
 // Initialize Firebase Auth
-// Use initializeAuth for modular SDK to configure persistence
 let authInstance;
 if (typeof window !== 'undefined') {
-  // Ensure this runs only on the client
   authInstance = initializeAuth(app, {
-    persistence: browserLocalPersistence // Persist auth state in local storage
+    persistence: browserLocalPersistence
   });
-  // Example for connecting to Auth Emulator - uncomment if you're using it
-  // if (process.env.NODE_ENV === 'development' && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
-  //   try {
-  //     connectAuthEmulator(authInstance, "http://localhost:9099", { disableWarnings: true });
-  //     console.log("Connected to Firebase Auth Emulator");
-  //   } catch (error) {
-  //     console.error("Error connecting to Firebase Auth Emulator:", error);
-  //   }
-  // }
 } else {
-  // For server-side, getAuth can be used but won't have persistence in the same way
-  // This instance is typically not used for actual auth operations on SSR directly for users.
   authInstance = getAuth(app);
 }
 
-export { app, db, authInstance as auth };
+export { app, db, authInstance as auth, shards };

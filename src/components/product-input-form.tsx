@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -19,9 +20,6 @@ import { useProductStore } from '@/store/product-store';
 import { useAuthStore } from '@/store/auth-store';
 import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Loader2 } from 'lucide-react';
-import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -35,7 +33,6 @@ const formSchema = z.object({
   }),
 });
 
-// Type for react-hook-form's internal state, where inputs are strings
 type ProductFormInputValues = {
   name: string;
   code: string; 
@@ -43,14 +40,14 @@ type ProductFormInputValues = {
 };
 
 export default function ProductInputForm() {
-  const addProductToStore = useProductStore((state) => state.addProduct);
-  const { isAuthenticated, userRole, isLoading: authIsLoading, uid: currentUserUid, email: currentUserEmail } = useAuthStore();
+  const addProduct = useProductStore((state) => state.addProduct);
+  const { isAuthenticated, userRole, isLoading: authIsLoading } = useAuthStore();
   const { toast } = useToast();
   const isAdmin = isAuthenticated && userRole === 'admin';
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  const form = useForm<ProductFormInputValues>({ // Use string types for form state
-    resolver: zodResolver(formSchema), // Zod will coerce string to number for validation
+  const form = useForm<ProductFormInputValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       code: '', 
@@ -64,8 +61,6 @@ export default function ProductInputForm() {
      }
    }, [isAdmin, authIsLoading, form]);
 
-
-  // onSubmit receives values inferred from Zod schema (numbers for code/price)
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!isAdmin) {
         toast({
@@ -77,39 +72,10 @@ export default function ProductInputForm() {
     }
     setIsSubmitting(true);
     try {
-        // Check if product code already exists
-        const productsRef = collection(db, 'products');
-        const q = query(productsRef, where("code", "==", values.code));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            toast({
-                title: "Duplicate Product Code",
-                description: `A product with code "${values.code}" already exists.`,
-                variant: "destructive",
-            });
-            setIsSubmitting(false);
-            return;
-        }
-
-        // Data to be saved (matches Zod schema, so code/price are numbers)
-        const productDataToSave = {
+        await addProduct({
             name: values.name,
             code: values.code,
             price: values.price,
-            addedByUid: currentUserUid,
-            addedByEmail: currentUserEmail,
-        };
-        
-        // Add to Firestore
-        const docRef = await addDoc(collection(db, 'products'), productDataToSave);
-        console.log("Document written to Firestore with ID: ", docRef.id);
-
-        // Add to Zustand store with Firestore ID and serverId
-        addProductToStore({ 
-            ...productDataToSave,
-            id: docRef.id, // Use the ID from Firestore
-            serverId: 'firestore', 
         });
 
         toast({

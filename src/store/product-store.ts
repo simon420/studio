@@ -1,19 +1,28 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Product } from '@/lib/types';
 import { useAuthStore } from './auth-store';
-import { db } from '@/lib/firebase'; 
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch } from 'firebase/firestore';
+import { db, shards } from '@/lib/firebase'; 
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, Firestore } from 'firebase/firestore';
 
+const shardIds = ['shard-a', 'shard-b', 'shard-c'];
+
+// Coordinator logic: Simple sharding function based on product code
+function getShard(productCode: number): { shardId: string; shardDb: Firestore } {
+    const shardIndex = productCode % shardIds.length;
+    const shardId = shardIds[shardIndex];
+    return { shardId, shardDb: shards[shardId as keyof typeof shards] };
+}
 
 interface ProductState {
   searchTerm: string;
   products: Product[];
   filteredProducts: Product[];
   setSearchTerm: (term: string) => void;
-  addProduct: (product: Product) => void; 
-  updateProductInStoreAndFirestore: (productId: string, updatedData: Partial<Pick<Product, 'name' | 'price'>>) => Promise<void>;
-  deleteProductFromStoreAndFirestore: (productId: string) => Promise<void>;
+  addProduct: (product: Omit<Product, 'id' | 'serverId'>) => Promise<void>; 
+  updateProductInStoreAndFirestore: (productId: string, serverId: string, updatedData: Partial<Pick<Product, 'name' | 'price'>>) => Promise<void>;
+  deleteProductFromStoreAndFirestore: (productId: string, serverId: string) => Promise<void>;
   filterProducts: () => void;
   clearSearchAndResults: () => void;
   loadInitialProducts: (initialProducts: Product[]) => void;
@@ -45,90 +54,123 @@ export const useProductStore = create<ProductState>()(
           return;
         }
         try {
-          const productCollection = collection(db, 'products');
-          const productSnapshot = await getDocs(productCollection);
-          const productList: Product[] = productSnapshot.docs.map(docSnap => {
-            const data = docSnap.data();
-            return {
-              id: docSnap.id,
-              name: data.name,
-              code: data.code,
-              price: data.price,
-              serverId: 'firestore', 
-              addedByUid: data.addedByUid,
-              addedByEmail: data.addedByEmail,
-            };
-          });
+          const allProducts: Product[] = [];
+          for (const shardId in shards) {
+            const shardDb = shards[shardId as keyof typeof shards];
+            const productCollection = collection(shardDb, 'products');
+            const productSnapshot = await getDocs(productCollection);
+            const productList: Product[] = productSnapshot.docs.map(docSnap => {
+              const data = docSnap.data();
+              return {
+                id: docSnap.id,
+                name: data.name,
+                code: data.code,
+                price: data.price,
+                serverId: shardId, 
+                addedByUid: data.addedByUid,
+                addedByEmail: data.addedByEmail,
+              };
+            });
+            allProducts.push(...productList);
+          }
           set({
-            products: productList,
+            products: allProducts,
           });
           get().filterProducts(); 
         } catch (error) {
-          console.error('Error fetching products from Firestore:', error);
+          console.error('Error fetching products from sharded Firestore:', error);
         }
       },
 
-      addProduct: (newProductWithId) => {
-        const { userRole, isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
+      addProduct: async (productData) => {
+        const { userRole, isAuthenticated, isLoading: authIsLoading, uid, email } = useAuthStore.getState();
         if (authIsLoading || !isAuthenticated || userRole !== 'admin') {
-            console.warn("Attempted to add product to store without admin privileges or while auth loading.");
-            return;
+          throw new Error("Only admins can add products.");
         }
+
+        const { shardId, shardDb } = getShard(productData.code);
+        const productsRef = collection(shardDb, 'products');
+
+        // Check for duplicate code within the target shard
+        const q = query(productsRef, where("code", "==", productData.code));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+            throw new Error(`A product with code "${productData.code}" already exists in shard "${shardId}".`);
+        }
+
+        const productDataToSave = {
+          ...productData,
+          addedByUid: uid,
+          addedByEmail: email,
+        };
         
+        const docRef = await addDoc(productsRef, productDataToSave);
+        
+        const newProductWithId: Product = {
+            ...productDataToSave,
+            id: docRef.id,
+            serverId: shardId,
+        };
+
         set((state) => ({
             products: [...state.products, newProductWithId],
         }));
         get().filterProducts(); 
       },
 
-      updateProductInStoreAndFirestore: async (productId, updatedData) => {
+      updateProductInStoreAndFirestore: async (productId, serverId, updatedData) => {
         const { userRole, isAuthenticated, uid } = useAuthStore.getState();
         if (!isAuthenticated || userRole !== 'admin') {
           throw new Error("User must be an admin to update products.");
         }
-
-        const productDocRef = doc(db, 'products', productId);
         
-        // Ensure the admin owns this product (extra check, though UI should prevent this)
+        const shardDb = shards[serverId as keyof typeof shards];
+        if (!shardDb) {
+            throw new Error(`Invalid serverId/shard: ${serverId}`);
+        }
+
+        const productDocRef = doc(shardDb, 'products', productId);
+        
         const currentProduct = get().products.find(p => p.id === productId);
         if (currentProduct?.addedByUid !== uid) {
             throw new Error("Admin can only update their own products.");
         }
 
-        // Firestore update
         await updateDoc(productDocRef, updatedData);
 
-        // Zustand store update
         set((state) => ({
           products: state.products.map((product) =>
             product.id === productId ? { ...product, ...updatedData } : product
           ),
         }));
-        get().filterProducts(); // Re-filter products after updating
+        get().filterProducts();
       },
 
-      deleteProductFromStoreAndFirestore: async (productId) => {
+      deleteProductFromStoreAndFirestore: async (productId, serverId) => {
         const { userRole, isAuthenticated, uid } = useAuthStore.getState();
          if (!isAuthenticated || userRole !== 'admin') {
           throw new Error("User must be an admin to delete products.");
         }
 
-        const productDocRef = doc(db, 'products', productId);
+        const shardDb = shards[serverId as keyof typeof shards];
+        if (!shardDb) {
+            throw new Error(`Invalid serverId/shard: ${serverId}`);
+        }
 
-        // Ensure the admin owns this product
+        const productDocRef = doc(shardDb, 'products', productId);
+
         const currentProduct = get().products.find(p => p.id === productId);
         if (currentProduct?.addedByUid !== uid) {
             throw new Error("Admin can only delete their own products.");
         }
 
-        // Firestore delete
         await deleteDoc(productDocRef);
 
-        // Zustand store delete
         set((state) => ({
           products: state.products.filter((product) => product.id !== productId),
         }));
-        get().filterProducts(); // Re-filter products after deleting
+        get().filterProducts();
       },
 
 
@@ -189,7 +231,6 @@ if (typeof window !== 'undefined') {
         } else {
           console.log("ProductStore: Auth loaded, user not authenticated. Clearing products.");
           productStore.clearSearchAndResults();
-          // No need to call set({ products: [] }) here, clearSearchAndResults handles it.
         }
       }
       else if (!previousAuthState.isAuthenticated && currentAuthState.isAuthenticated && !currentAuthState.isLoading) {

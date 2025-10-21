@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -24,12 +25,12 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PackagePlus, Loader2, Search, Edit, Trash2 } from 'lucide-react';
 import type { Product } from '@/lib/types';
-import EditProductDialog from './edit-product-dialog'; // Import the new dialog
+import EditProductDialog from './edit-product-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 export default function AdminProductsList() {
   const { uid, isLoading: authIsLoading } = useAuthStore();
@@ -54,7 +55,7 @@ export default function AdminProductsList() {
 
   React.useEffect(() => {
     if (!authIsLoading && uid) {
-        if (products.length === 0) { // Fetch only if products are not already loaded
+        if (products.length === 0) {
             setIsLoadingProducts(true);
             fetchProductsFromFirestore().finally(() => setIsLoadingProducts(false));
         } else {
@@ -94,10 +95,10 @@ export default function AdminProductsList() {
   };
 
   const handleSaveEdit = async (updatedData: Partial<Pick<Product, 'name' | 'price'>>) => {
-    if (!editingProduct) return;
+    if (!editingProduct || !editingProduct.serverId) return;
     setIsUpdating(true);
     try {
-      await updateProduct(editingProduct.id, updatedData);
+      await updateProduct(editingProduct.id, editingProduct.serverId, updatedData);
       toast({
         title: 'Product Updated',
         description: `"${updatedData.name || editingProduct.name}" has been updated.`,
@@ -122,10 +123,10 @@ export default function AdminProductsList() {
   };
 
   const confirmDelete = async () => {
-    if (!productToDelete) return;
+    if (!productToDelete || !productToDelete.serverId) return;
     setIsDeleting(true);
     try {
-      await deleteProduct(productToDelete.id);
+      await deleteProduct(productToDelete.id, productToDelete.serverId);
       toast({
         title: 'Product Deleted',
         description: `"${productToDelete.name}" has been successfully deleted.`,
@@ -181,16 +182,17 @@ export default function AdminProductsList() {
           </TableCaption>
           <TableHeader className="sticky top-0 bg-secondary z-10">
             <TableRow>
-              <TableHead className="w-[40%]">Name</TableHead>
-              <TableHead className="w-[20%]">Code</TableHead>
-              <TableHead className="w-[20%] text-right">Price</TableHead>
+              <TableHead className="w-[30%]">Name</TableHead>
+              <TableHead className="w-[15%]">Code</TableHead>
+              <TableHead className="w-[15%] text-right">Price</TableHead>
+              <TableHead className="w-[20%]">Server</TableHead>
               <TableHead className="w-[20%] text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredAdminProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
                     <PackagePlus className="h-8 w-8" /> 
                     <span>
@@ -208,6 +210,11 @@ export default function AdminProductsList() {
                   <TableCell>{product.code}</TableCell>
                   <TableCell className="text-right">
                     ${product.price.toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={'secondary'}>
+                      {product.serverId || 'N/A'}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-center">
                     <div className="flex justify-center space-x-2">
@@ -273,4 +280,3 @@ export default function AdminProductsList() {
     </div>
   );
 }
-
