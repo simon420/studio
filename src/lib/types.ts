@@ -9,7 +9,7 @@ export type Product = {
   addedByEmail?: string; // Email of the user who added the product
 };
 
-export type UserRole = 'admin' | 'user';
+export type UserRole = 'admin' | 'user' | 'pending';
 
 // Define the structure for a User stored in Firestore
 export type UserFirestoreData = {
@@ -23,4 +23,3 @@ export type UserFirestoreData = {
 
 // SessionPayload is no longer needed with Firebase Auth handling sessions.
 // If you pass ID tokens to backend, you might define a type for the decoded token.
-

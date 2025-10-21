@@ -7,7 +7,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { UserRole, UserFirestoreData } from '@/lib/types';
 
@@ -18,6 +18,7 @@ interface AuthState {
   userRole: UserRole | 'guest';
   isAuthenticated: boolean;
   isLoading: boolean; // To handle async auth state loading
+  requestAdminRegistration: (email: string, password: string) => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
@@ -53,6 +54,9 @@ export const useAuthStore = create<AuthState>()(
         },
 
         register: async (email, password, role) => {
+          if (role === 'admin') {
+            throw new Error("La registrazione degli amministratori deve passare attraverso la richiesta.");
+          }
           set({ isLoading: true });
           try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
@@ -71,6 +75,26 @@ export const useAuthStore = create<AuthState>()(
           } catch (error: any) {
             set({ isLoading: false });
             console.error('Firebase registration error:', error);
+            throw error;
+          }
+        },
+
+        requestAdminRegistration: async (email, password) => {
+          set({ isLoading: true });
+          try {
+            // We don't create the user. We just store the request.
+            const requestRef = collection(db, 'adminRequests');
+            await addDoc(requestRef, {
+              email: email,
+              password: password, // Storing password is NOT recommended. This is a placeholder for a more secure flow.
+              status: 'pending',
+              requestedAt: serverTimestamp(),
+            });
+            // Don't log the user in
+             set({ isLoading: false });
+          } catch(error: any) {
+            set({ isLoading: false });
+            console.error('Errore nella richiesta di registrazione admin:', error);
             throw error;
           }
         },

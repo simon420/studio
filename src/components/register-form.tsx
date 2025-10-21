@@ -44,7 +44,7 @@ const registerSchema = z.object({
 export default function RegisterForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { register, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
+  const { register, requestAdminRegistration, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
   const [isSubmittingForm, setIsSubmittingForm] = React.useState(false);
 
   const form = useForm<z.infer<typeof registerSchema>>({
@@ -67,6 +67,27 @@ export default function RegisterForm() {
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsSubmittingForm(true);
     form.clearErrors();
+
+    if (values.role === 'admin') {
+      try {
+        await requestAdminRegistration(values.email, values.password);
+        toast({
+          title: 'Richiesta Inviata',
+          description: "La tua richiesta di registrazione come amministratore è stata inviata per l'approvazione.",
+        });
+        form.reset();
+      } catch (error: any) {
+        toast({
+          title: 'Invio Richiesta Fallito',
+          description: error.message || "Impossibile inviare la richiesta di registrazione.",
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSubmittingForm(false);
+      }
+      return;
+    }
+
 
     try {
       await register(values.email, values.password, values.role);
@@ -174,7 +195,7 @@ export default function RegisterForm() {
                 </FormControl>
                 <SelectContent>
                   <SelectItem value="user">Utente</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="admin">Admin (Richiede Approvazione)</SelectItem>
                 </SelectContent>
               </Select>
               <FormDescription>
@@ -186,7 +207,7 @@ export default function RegisterForm() {
         />
          {form.formState.errors.root?.serverError && (
              <p className="text-sm font-medium text-destructive">
-                 {form.formState.errors.root.serverError.message}
+                 {form.formState.errors.root?.serverError?.message}
              </p>
          )}
         <Button type="submit" className="w-full" disabled={displayLoading}>
