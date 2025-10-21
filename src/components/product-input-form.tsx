@@ -23,13 +23,13 @@ import { PlusCircle, Loader2 } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, {
-    message: 'Product name must be at least 2 characters.',
+    message: 'Il nome del prodotto deve essere di almeno 2 caratteri.',
   }),
   code: z.coerce.number().int().positive({
-    message: 'Product code must be a positive number.',
+    message: 'Il codice prodotto deve essere un numero positivo.',
   }),
   price: z.coerce.number().positive({
-    message: 'Price must be a positive number.',
+    message: 'Il prezzo deve essere un numero positivo.',
   }),
 });
 
@@ -64,8 +64,8 @@ export default function ProductInputForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!isAdmin) {
         toast({
-            title: "Unauthorized",
-            description: "You must be an admin to add products.",
+            title: "Non autorizzato",
+            description: "Devi essere un amministratore per aggiungere prodotti.",
             variant: "destructive",
         });
         return;
@@ -79,15 +79,15 @@ export default function ProductInputForm() {
         });
 
         toast({
-          title: "Product Added",
-          description: `"${values.name}" has been added successfully.`,
+          title: "Prodotto Aggiunto",
+          description: `"${values.name}" è stato aggiunto con successo.`,
         });
         form.reset({ name: '', code: '', price: '' });
     } catch (e: any) {
-        console.error("Error adding product:", e);
+        console.error("Errore aggiunta prodotto:", e);
         toast({
-          title: "Error",
-          description: e.message || "Could not add product.",
+          title: "Errore",
+          description: e.message || "Impossibile aggiungere il prodotto.",
           variant: "destructive",
         });
     } finally {
@@ -106,9 +106,9 @@ export default function ProductInputForm() {
             name="name"
             render={({ field }) => ( 
               <FormItem>
-                <FormLabel>Product Name</FormLabel>
+                <FormLabel>Nome Prodotto</FormLabel>
                 <FormControl>
-                  <Input placeholder="e.g., Super Widget" {...field} value={field.value || ''} />
+                  <Input placeholder="es. Super Widget" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -119,9 +119,9 @@ export default function ProductInputForm() {
             name="code"
             render={({ field }) => ( 
               <FormItem>
-                <FormLabel>Product Code</FormLabel>
+                <FormLabel>Codice Prodotto</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="e.g., 12345" {...field} value={field.value || ''} />
+                  <Input type="number" placeholder="es. 12345" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -132,9 +132,9 @@ export default function ProductInputForm() {
             name="price"
             render={({ field }) => ( 
               <FormItem>
-                <FormLabel>Price ($)</FormLabel>
+                <FormLabel>Prezzo (€)</FormLabel>
                 <FormControl>
-                  <Input type="number" step="0.01" placeholder="e.g., 19.99" {...field} value={field.value || ''} />
+                  <Input type="number" step="0.01" placeholder="es. 19.99" {...field} value={field.value || ''} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -142,18 +142,18 @@ export default function ProductInputForm() {
           />
            <Button type="submit" className="w-full" disabled={!isAdmin || displayLoading}>
              {displayLoading && isAdmin ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-              {displayLoading && isAdmin ? 'Adding...' : 'Add Product'}
+              {displayLoading && isAdmin ? 'Aggiungendo...' : 'Aggiungi Prodotto'}
            </Button>
         </fieldset>
          {!isAdmin && !authIsLoading && ( 
              <p className="text-sm text-muted-foreground text-center pt-2">
-                 Only administrators can add products.
+                 Solo gli amministratori possono aggiungere prodotti.
              </p>
          )}
          {authIsLoading && ( 
             <div className="flex items-center justify-center pt-2">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <p className="ml-2 text-sm text-muted-foreground">Checking permissions...</p>
+                <p className="ml-2 text-sm text-muted-foreground">Verifica autorizzazioni...</p>
             </div>
          )}
       </form>

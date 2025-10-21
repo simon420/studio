@@ -40,7 +40,7 @@ export default function SearchResults() {
   return (
      <Card>
         <CardHeader>
-          <CardTitle>Search Products</CardTitle> {/* Updated CardTitle */}
+          <CardTitle>Cerca Prodotti</CardTitle> {/* Updated CardTitle */}
         </CardHeader>
         <CardContent>
            <div className="mb-6"> {/* Add margin for spacing */}
@@ -50,7 +50,7 @@ export default function SearchResults() {
            {!isAuthenticated ? (
              <div className="flex flex-col items-center justify-center h-[350px] text-muted-foreground rounded-md border"> {/* Adjusted height due to input */}
                <AlertCircle className="h-8 w-8 mb-2" />
-               <p>Log in to see product results.</p>
+               <p>Effettua il login per vedere i risultati dei prodotti.</p>
              </div>
            ) : (
              // Render table when authenticated
@@ -58,16 +58,16 @@ export default function SearchResults() {
                <Table>
                  <TableCaption className="py-4">
                    {filteredProducts.length > 0
-                     ? `Showing ${filteredProducts.length} product(s).`
+                     ? `Mostrando ${filteredProducts.length} prodotto(i).`
                      : ''}
                  </TableCaption>
                  <TableHeader className="sticky top-0 bg-secondary z-10">
                    <TableRow>
-                     <TableHead className="w-[30%]">Name</TableHead>
-                     <TableHead className="w-[15%]">Code</TableHead>
-                     <TableHead className="w-[15%] text-right">Price</TableHead>
+                     <TableHead className="w-[30%]">Nome</TableHead>
+                     <TableHead className="w-[15%]">Codice</TableHead>
+                     <TableHead className="w-[15%] text-right">Prezzo</TableHead>
                      <TableHead className="w-[20%]">Server</TableHead>
-                     <TableHead className="w-[20%]">Added By</TableHead>
+                     <TableHead className="w-[20%]">Aggiunto Da</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -77,14 +77,14 @@ export default function SearchResults() {
                          <TableCell className="font-medium">{product.name}</TableCell>
                          <TableCell>{product.code}</TableCell>
                          <TableCell className="text-right">
-                           ${product.price.toFixed(2)}
+                           €{product.price.toFixed(2)}
                          </TableCell>
                          <TableCell>
                            <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
-                             {product.serverId || 'N/A'}
+                             {product.serverId || 'N/D'}
                            </Badge>
                          </TableCell>
-                         <TableCell>{product.addedByEmail || product.addedByUid || 'N/A'}</TableCell>
+                         <TableCell>{product.addedByEmail || product.addedByUid || 'N/D'}</TableCell>
                        </TableRow>
                      ))
                    ) : searchTerm ? (
@@ -92,7 +92,7 @@ export default function SearchResults() {
                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                          <div className="flex flex-col items-center justify-center gap-2">
                            <PackageSearch className="h-8 w-8" />
-                           <span>No results found for "{searchTerm}".</span>
+                           <span>Nessun risultato trovato per "{searchTerm}".</span>
                          </div>
                        </TableCell>
                      </TableRow>
@@ -101,7 +101,7 @@ export default function SearchResults() {
                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
                          <div className="flex flex-col items-center justify-center gap-2">
                            <Info className="h-8 w-8" />
-                           <span>The list is currently empty.</span>
+                           <span>La lista è attualmente vuota.</span>
                          </div>
                        </TableCell>
                      </TableRow>

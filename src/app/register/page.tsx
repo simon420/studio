@@ -18,7 +18,7 @@ export default function RegisterPage() {
             <div className="mx-auto md:mx-0 mb-6 flex items-center justify-center md:justify-start">
               <Image
                 src="https://picsum.photos/100/100"
-                alt="Product Finder App Logo"
+                alt="Logo App Ricerca Prodotti"
                 width={100}
                 height={100}
                 className="rounded-full shadow-lg object-cover"
@@ -26,11 +26,11 @@ export default function RegisterPage() {
               />
             </div>
             <h1 className="text-4xl lg:text-5xl font-bold text-primary mb-4">
-              Join Product Finder
+              Unisciti a Ricerca Prodotti
             </h1>
             <p className="text-lg lg:text-xl text-card-foreground/90">
-              Create your account in just a few simple steps to start discovering and managing products with ease.
-              We're excited to have you on board!
+              Crea il tuo account in pochi semplici passaggi per iniziare a scoprire e gestire i prodotti con facilità.
+              Siamo entusiasti di averti a bordo!
             </p>
           </header>
         </div>
@@ -42,17 +42,17 @@ export default function RegisterPage() {
               <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 text-primary">
                 <UserPlus className="h-7 w-7" />
               </div>
-              <CardTitle className="text-2xl font-bold">Create Your Account</CardTitle>
+              <CardTitle className="text-2xl font-bold">Crea il Tuo Account</CardTitle>
               <CardDescription className="text-card-foreground/80">
-                Fill in the details below to register.
+                Compila i dettagli qui sotto per registrarti.
               </CardDescription>
             </CardHeader>
             <CardContent>
               <RegisterForm /> {/* Use the reusable form component */}
               <p className="mt-6 text-center text-sm text-card-foreground/80">
-                Already have an account?{' '}
+                Hai già un account?{' '}
                 <Link href="/login" className="font-semibold text-primary hover:text-primary/80 underline">
-                  Login here
+                  Accedi qui
                 </Link>
               </p>
             </CardContent>
@@ -62,4 +62,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

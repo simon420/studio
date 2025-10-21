@@ -100,16 +100,16 @@ export default function AdminProductsList() {
     try {
       await updateProduct(editingProduct.id, editingProduct.serverId, updatedData);
       toast({
-        title: 'Product Updated',
-        description: `"${updatedData.name || editingProduct.name}" has been updated.`,
+        title: 'Prodotto Aggiornato',
+        description: `"${updatedData.name || editingProduct.name}" è stato aggiornato.`,
       });
       setIsEditDialogOpen(false);
       setEditingProduct(null);
     } catch (error: any) {
-      console.error('Error updating product:', error);
+      console.error('Errore aggiornamento prodotto:', error);
       toast({
-        title: 'Update Failed',
-        description: error.message || 'Could not update product.',
+        title: 'Aggiornamento Fallito',
+        description: error.message || 'Impossibile aggiornare il prodotto.',
         variant: 'destructive',
       });
     } finally {
@@ -128,16 +128,16 @@ export default function AdminProductsList() {
     try {
       await deleteProduct(productToDelete.id, productToDelete.serverId);
       toast({
-        title: 'Product Deleted',
-        description: `"${productToDelete.name}" has been successfully deleted.`,
+        title: 'Prodotto Eliminato',
+        description: `"${productToDelete.name}" è stato eliminato con successo.`,
       });
       setIsDeleteDialogOpen(false);
       setProductToDelete(null);
     } catch (error: any) {
-      console.error('Error deleting product:', error);
+      console.error('Errore eliminazione prodotto:', error);
       toast({
-        title: 'Delete Failed',
-        description: error.message || 'Could not delete product.',
+        title: 'Eliminazione Fallita',
+        description: error.message || 'Impossibile eliminare il prodotto.',
         variant: 'destructive',
       });
     } finally {
@@ -150,13 +150,13 @@ export default function AdminProductsList() {
     return (
       <div className="flex items-center justify-center h-[200px]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Loading your products...</p>
+        <p className="ml-2 text-muted-foreground">Caricamento dei tuoi prodotti...</p>
       </div>
     );
   }
 
   if (!uid) {
-    return <p className="text-muted-foreground text-center">Could not identify admin user.</p>;
+    return <p className="text-muted-foreground text-center">Impossibile identificare l'utente admin.</p>;
   }
 
   return (
@@ -165,7 +165,7 @@ export default function AdminProductsList() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="search"
-          placeholder="Search your products by name or code..."
+          placeholder="Cerca i tuoi prodotti per nome o codice..."
           value={adminSearchTerm}
           onChange={handleAdminSearchChange}
           className="pl-10 w-full"
@@ -175,18 +175,18 @@ export default function AdminProductsList() {
         <Table>
           <TableCaption className="py-4">
             {filteredAdminProducts.length > 0
-              ? `Showing ${filteredAdminProducts.length} of your product(s).`
+              ? `Mostrando ${filteredAdminProducts.length} dei tuoi prodotti.`
               : adminSearchTerm && filteredAdminProducts.length === 0
               ? '' 
-              : 'You have not added any products yet.'}
+              : 'Non hai ancora aggiunto nessun prodotto.'}
           </TableCaption>
           <TableHeader className="sticky top-0 bg-secondary z-10">
             <TableRow>
-              <TableHead className="w-[30%]">Name</TableHead>
-              <TableHead className="w-[15%]">Code</TableHead>
-              <TableHead className="w-[15%] text-right">Price</TableHead>
+              <TableHead className="w-[30%]">Nome</TableHead>
+              <TableHead className="w-[15%]">Codice</TableHead>
+              <TableHead className="w-[15%] text-right">Prezzo</TableHead>
               <TableHead className="w-[20%]">Server</TableHead>
-              <TableHead className="w-[20%] text-center">Actions</TableHead>
+              <TableHead className="w-[20%] text-center">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -197,8 +197,8 @@ export default function AdminProductsList() {
                     <PackagePlus className="h-8 w-8" /> 
                     <span>
                       {adminSearchTerm 
-                        ? `No products found matching "${adminSearchTerm}".` 
-                        : 'No products added by you.'}
+                        ? `Nessun prodotto trovato per "${adminSearchTerm}".` 
+                        : 'Nessun prodotto aggiunto da te.'}
                     </span>
                   </div>
                 </TableCell>
@@ -223,7 +223,7 @@ export default function AdminProductsList() {
                           size="sm"
                           onClick={() => handleEdit(product)}
                           disabled={isUpdating || isDeleting}
-                          aria-label="Edit product"
+                          aria-label="Modifica prodotto"
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -232,7 +232,7 @@ export default function AdminProductsList() {
                           size="sm"
                           onClick={() => openDeleteDialog(product)}
                           disabled={isUpdating || isDeleting}
-                          aria-label="Delete product"
+                          aria-label="Elimina prodotto"
                         >
                           {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                         </Button>
@@ -257,21 +257,21 @@ export default function AdminProductsList() {
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogTitle>Sei sicuro?</AlertDialogTitle>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the product
+                Questa azione non può essere annullata. Questo eliminerà permanentemente il prodotto
                 "{productToDelete.name}".
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting} onClick={() => { setIsDeleteDialogOpen(false); setProductToDelete(null); }}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDeleting} onClick={() => { setIsDeleteDialogOpen(false); setProductToDelete(null); }}>Annulla</AlertDialogCancel>
               <AlertDialogAction
                 onClick={confirmDelete}
                 disabled={isDeleting}
                 className="bg-destructive hover:bg-destructive/90"
               >
                 {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Delete
+                Elimina
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

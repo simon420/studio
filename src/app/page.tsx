@@ -37,7 +37,7 @@ export default function Home() {
       <div className="flex min-h-screen items-center justify-center bg-background"> {/* Ensure loading also has a background */}
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-3 text-lg text-muted-foreground">
-          {authIsLoading ? 'Loading application...' : 'Redirecting to login...'}
+          {authIsLoading ? 'Caricamento applicazione...' : 'Reindirizzamento al login...'}
         </p>
       </div>
     );
@@ -53,7 +53,7 @@ export default function Home() {
             <div className="relative w-16 h-16 sm:w-20 sm:h-20 mr-0 sm:mr-4 mb-2 sm:mb-0 rounded-full overflow-hidden shadow-md">
                 <Image
                     src="https://picsum.photos/80/80?data-ai-hint=product+design" 
-                    alt="Product Finder Logo"
+                    alt="Logo Ricerca Prodotti"
                     width={80}
                     height={80}
                     className="object-cover"
@@ -61,9 +61,9 @@ export default function Home() {
                 />
             </div>
             <div>
-                <h1 className="text-3xl font-bold text-primary">Product Finder</h1>
+                <h1 className="text-3xl font-bold text-primary">Ricerca Prodotti</h1>
                 <p className="text-muted-foreground">
-                Search for products using Firebase Autentication and Cloud Firestore Database
+                Cerca prodotti utilizzando Firebase Authentication e Cloud Firestore Database
                 </p>
             </div>
           </header>
@@ -80,7 +80,7 @@ export default function Home() {
               {userRole === 'admin' ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>Add New Product</CardTitle>
+                    <CardTitle>Aggiungi Nuovo Prodotto</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ProductInputForm />
@@ -91,12 +91,12 @@ export default function Home() {
                   <CardHeader>
                     <CardTitle className="flex items-center">
                       <AlertCircle className="mr-2 h-5 w-5 text-primary" />
-                      Admin Feature
+                      Funzionalità Admin
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="flex-grow flex items-center">
                     <p className="text-sm text-muted-foreground">
-                      Adding new products is an exclusive feature for administrator accounts. As a user, you can search for existing products.
+                      L'aggiunta di nuovi prodotti è una funzionalità esclusiva per gli account amministratori. Come utente, puoi cercare i prodotti esistenti.
                     </p>
                   </CardContent>
                 </Card>
@@ -106,7 +106,7 @@ export default function Home() {
               {userRole === 'admin' ? (
                 <Card>
                   <CardHeader>
-                    <CardTitle>My Added Products</CardTitle>
+                    <CardTitle>I Miei Prodotti Aggiunti</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <AdminProductsList />
@@ -116,12 +116,12 @@ export default function Home() {
                 <Card className="h-full flex flex-col">
                   <CardHeader className="text-center">
                       <PackageSearch className="h-10 w-10 mx-auto mb-2 text-primary" />
-                      <CardTitle className="text-lg">Your Product Contributions</CardTitle>
+                      <CardTitle className="text-lg">I Tuoi Contributi di Prodotti</CardTitle>
                   </CardHeader>
                   <CardContent className="text-center flex-grow flex flex-col justify-center">
                     <p className="text-sm text-muted-foreground">
-                      Administrators can view and manage products they've added in this section.
-                      Users do not have product contributions to display here.
+                      Gli amministratori possono visualizzare e gestire i prodotti che hanno aggiunto in questa sezione.
+                      Gli utenti non hanno contributi di prodotti da visualizzare qui.
                     </p>
                   </CardContent>
                 </Card>
@@ -133,7 +133,7 @@ export default function Home() {
           </main>
 
           <footer className="mt-12 pt-4 border-t text-center text-muted-foreground text-sm">
-            Product Finder &copy; {new Date().getFullYear()}
+            Ricerca Prodotti &copy; {new Date().getFullYear()}
           </footer>
         </div>
       </div>

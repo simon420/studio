@@ -31,12 +31,12 @@ import type { UserRole } from '@/lib/types';
 import { UserPlus, Loader2 } from 'lucide-react';
 
 const registerSchema = z.object({
-  email: z.string().email('Invalid email address').min(1, 'Email is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  email: z.string().email('Indirizzo email non valido').min(1, 'Email è richiesta'),
+  password: z.string().min(6, 'La password deve contenere almeno 6 caratteri'),
   confirmPassword: z.string(),
-  role: z.enum(['admin', 'user'], { required_error: 'Role is required' }),
+  role: z.enum(['admin', 'user'], { required_error: 'Il ruolo è richiesto' }),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Le password non coincidono",
   path: ['confirmPassword'],
 });
 
@@ -73,35 +73,35 @@ export default function RegisterForm() {
       // onAuthStateChanged in store handles setting isAuthenticated.
       // useEffect above handles redirect.
       toast({
-        title: 'Registration Successful',
-        description: 'Your account has been created. You are now logged in.',
+        title: 'Registrazione Riuscita',
+        description: 'Il tuo account è stato creato. Hai effettuato l\'accesso.',
       });
     } catch (error: any) {
       console.error('Registration form error:', error);
-      let errorMessage = 'An unexpected error occurred.';
+      let errorMessage = 'Si è verificato un errore imprevisto.';
       if (error.code) {
         switch (error.code) {
           case 'auth/email-already-in-use':
-            errorMessage = 'This email address is already in use.';
+            errorMessage = 'Questo indirizzo email è già in uso.';
             form.setError('email', { type: 'server', message: errorMessage });
             break;
           case 'auth/weak-password':
-            errorMessage = 'The password is too weak (at least 6 characters).';
+            errorMessage = 'La password è troppo debole (almeno 6 caratteri).';
             form.setError('password', { type: 'server', message: errorMessage });
             break;
           case 'auth/invalid-email':
-            errorMessage = 'The email address is not valid.';
+            errorMessage = 'L\'indirizzo email non è valido.';
             form.setError('email', { type: 'server', message: errorMessage });
             break;
           default:
-            errorMessage = error.message || 'Registration failed.';
+            errorMessage = error.message || 'Registrazione fallita.';
         }
       } else {
-        errorMessage = error.message || 'Registration failed.';
+        errorMessage = error.message || 'Registrazione fallita.';
       }
       
       toast({
-        title: 'Registration Failed',
+        title: 'Registrazione Fallita',
         description: errorMessage,
         variant: 'destructive',
       });
@@ -128,7 +128,7 @@ export default function RegisterForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="you@example.com" {...field} disabled={displayLoading} />
+                <Input type="email" placeholder="tu@esempio.com" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -141,7 +141,7 @@ export default function RegisterForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="min. 6 characters" {...field} disabled={displayLoading} />
+                <Input type="password" placeholder="min. 6 caratteri" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -152,9 +152,9 @@ export default function RegisterForm() {
           name="confirmPassword"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Confirm Password</FormLabel>
+              <FormLabel>Conferma Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="re-type password" {...field} disabled={displayLoading} />
+                <Input type="password" placeholder="riscrivi la password" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -165,20 +165,20 @@ export default function RegisterForm() {
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Role</FormLabel>
+              <FormLabel>Ruolo</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value} disabled={displayLoading}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a role" />
+                    <SelectValue placeholder="Seleziona un ruolo" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="user">Utente</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
               <FormDescription>
-                Admins can add products, Users can only search.
+                Gli Admin possono aggiungere prodotti, gli Utenti possono solo cercare.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -191,7 +191,7 @@ export default function RegisterForm() {
          )}
         <Button type="submit" className="w-full" disabled={displayLoading}>
           {displayLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" /> }
-          {displayLoading ? 'Registering...' : 'Register'}
+          {displayLoading ? 'Registrazione...' : 'Registrati'}
         </Button>
       </form>
     </Form>

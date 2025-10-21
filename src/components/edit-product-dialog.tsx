@@ -29,14 +29,14 @@ import { Loader2, Save } from 'lucide-react';
 
 const editProductSchema = z.object({
   name: z.string().min(2, {
-    message: 'Product name must be at least 2 characters.',
+    message: 'Il nome del prodotto deve contenere almeno 2 caratteri.',
   }),
   // Code is not editable in this dialog, but included for type consistency if needed later
   // code: z.coerce.number().int().positive({
   //   message: 'Product code must be a positive number.',
   // }),
   price: z.coerce.number().positive({
-    message: 'Price must be a positive number.',
+    message: 'Il prezzo deve essere un numero positivo.',
   }),
 });
 
@@ -88,9 +88,9 @@ export default function EditProductDialog({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Product</DialogTitle>
+          <DialogTitle>Modifica Prodotto</DialogTitle>
           <DialogDescription>
-            Make changes to your product here. Product code cannot be changed. Click save when you're done.
+            Apporta modifiche al tuo prodotto qui. Il codice del prodotto non può essere modificato. Clicca su salva quando hai finito.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -100,16 +100,16 @@ export default function EditProductDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Product Name</FormLabel>
+                  <FormLabel>Nome Prodotto</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., Super Widget" {...field} disabled={isSaving} />
+                    <Input placeholder="es. Super Widget" {...field} disabled={isSaving} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <FormItem>
-              <FormLabel>Product Code (Read-only)</FormLabel>
+              <FormLabel>Codice Prodotto (Sola lettura)</FormLabel>
               <FormControl>
                 <Input type="number" value={product.code} readOnly disabled className="bg-muted/50 cursor-not-allowed" />
               </FormControl>
@@ -119,9 +119,9 @@ export default function EditProductDialog({
               name="price"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Price ($)</FormLabel>
+                  <FormLabel>Prezzo (€)</FormLabel>
                   <FormControl>
-                    <Input type="number" step="0.01" placeholder="e.g., 19.99" {...field} disabled={isSaving} />
+                    <Input type="number" step="0.01" placeholder="es. 19.99" {...field} disabled={isSaving} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -130,12 +130,12 @@ export default function EditProductDialog({
             <DialogFooter>
               <DialogClose asChild>
                 <Button type="button" variant="outline" disabled={isSaving}>
-                  Cancel
+                  Annulla
                 </Button>
               </DialogClose>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? 'Salvataggio...' : 'Salva Modifiche'}
               </Button>
             </DialogFooter>
           </form>

@@ -21,8 +21,8 @@ export default function AuthControls() {
     try {
       await logout();
       toast({
-        title: 'Logged Out',
-        description: 'You have been successfully logged out.',
+        title: 'Disconnesso',
+        description: 'Sei stato disconnesso con successo.',
       });
        // Redirect is handled by onAuthStateChanged listener setting isAuthenticated to false,
        // which page.tsx or other protected components would react to.
@@ -30,10 +30,10 @@ export default function AuthControls() {
        // router.push('/login');
        // router.refresh(); // Might not be needed if components correctly react to store changes
     } catch (error: any) {
-      console.error('Logout failed:', error);
+      console.error('Logout fallito:', error);
       toast({
-        title: 'Logout Failed',
-        description: error.message || 'Could not log out.',
+        title: 'Logout Fallito',
+        description: error.message || 'Impossibile effettuare il logout.',
         variant: 'destructive',
       });
     } finally {
@@ -62,11 +62,11 @@ export default function AuthControls() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Authentication</CardTitle>
+          <CardTitle>Autenticazione</CardTitle>
         </CardHeader>
         <CardContent className="flex items-center justify-center p-6">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          <p className="ml-2 text-muted-foreground">Checking auth status...</p>
+          <p className="ml-2 text-muted-foreground">Verifica stato autenticazione...</p>
         </CardContent>
       </Card>
     );
@@ -75,15 +75,15 @@ export default function AuthControls() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Authentication</CardTitle>
+        <CardTitle>Autenticazione</CardTitle>
         <CardDescription className="flex items-center min-h-[20px]"> {/* Added min-height */}
           {isAuthenticated ? (
             <>
-              Logged in as: <span className="font-semibold ml-1">{email || 'User'}</span> ({userRole})
+              Accesso come: <span className="font-semibold ml-1">{email || 'Utente'}</span> ({userRole})
               {getRoleIcon()}
             </>
           ) : (
-            'You are not logged in.'
+            'Non hai effettuato l\'accesso.'
           )}
         </CardDescription>
       </CardHeader>
@@ -91,11 +91,11 @@ export default function AuthControls() {
         {isAuthenticated ? (
           <Button onClick={handleLogout} variant="destructive" size="sm" disabled={isLoggingOut || authIsLoading}>
             {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <LogOut className="mr-2 h-4 w-4" />}
-            {isLoggingOut ? 'Logging out...' : 'Logout'}
+            {isLoggingOut ? 'Disconnessione...' : 'Logout'}
           </Button>
         ) : (
            <Button onClick={handleLoginRedirect} variant="outline" size="sm" disabled={authIsLoading}>
-             <LogIn className="mr-2 h-4 w-4" /> Go to Login
+             <LogIn className="mr-2 h-4 w-4" /> Vai al Login
            </Button>
         )}
       </CardContent>

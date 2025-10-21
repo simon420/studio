@@ -23,7 +23,7 @@ export default function SearchInput() {
        <Search className={`absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 ${isDisabled ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
        <Input
          type="search"
-         placeholder={isDisabled ? "Log in to search..." : "Search by name or code..."}
+         placeholder={isDisabled ? "Accedi per cercare..." : "Cerca per nome o codice..."}
          value={searchTerm}
          onChange={handleInputChange}
          className="pl-10 w-full" // Add padding for the icon

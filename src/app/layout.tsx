@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Product Finder', // Updated title
-  description: 'Distributed product search application', // Updated description
+  title: 'Ricerca Prodotti', // Updated title
+  description: 'Applicazione di ricerca prodotti distribuita', // Updated description
 };
 
 export default function RootLayout({
@@ -39,7 +39,7 @@ export default function RootLayout({
   // Here, we conditionally wrap other pages.
 
   return (
-    <html lang="en">
+    <html lang="it">
       <body
         className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
       >

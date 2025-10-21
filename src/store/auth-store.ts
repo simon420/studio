@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { persist, createJSONStorage, devtools } from 'zustand/middleware';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -96,13 +95,13 @@ export const useAuthStore = create<AuthState>()(
               const userData = userDocSnap.data() as UserFirestoreData;
               return userData.role;
             } else {
-              console.warn('User document not found in Firestore for UID:', uid, "- defaulting to 'user' role.");
+              console.warn('Documento utente non trovato in Firestore per UID:', uid, "- imposto ruolo di default 'user'.");
               // This can happen if registration succeeded for auth but Firestore write failed/is pending
               // Or if user was created via Firebase console without a corresponding Firestore doc.
               return 'user'; 
             }
           } catch (error) {
-            console.error('Error fetching user role from Firestore:', error);
+            console.error('Errore nel recupero del ruolo utente da Firestore:', error);
             return 'user'; // Fallback on error
           }
         },
@@ -126,7 +125,7 @@ export const useAuthStore = create<AuthState>()(
             } catch (error) {
               // This catch is primarily for unexpected errors in _fetchUserRole
               // though _fetchUserRole itself has a catch and returns a default.
-              console.error("Error during role fetching in _updateAuthData:", error);
+              console.error("Errore durante il recupero del ruolo in _updateAuthData:", error);
               set({
                 firebaseUser: fbUser,
                 email: fbUser.email,

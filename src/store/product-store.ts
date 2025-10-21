@@ -1,4 +1,3 @@
-
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Product } from '@/lib/types';
@@ -78,14 +77,14 @@ export const useProductStore = create<ProductState>()(
           });
           get().filterProducts(); 
         } catch (error) {
-          console.error('Error fetching products from sharded Firestore:', error);
+          console.error('Errore nel recupero dei prodotti da Firestore sharded:', error);
         }
       },
 
       addProduct: async (productData) => {
         const { userRole, isAuthenticated, isLoading: authIsLoading, uid, email } = useAuthStore.getState();
         if (authIsLoading || !isAuthenticated || userRole !== 'admin') {
-          throw new Error("Only admins can add products.");
+          throw new Error("Solo gli amministratori possono aggiungere prodotti.");
         }
 
         const { shardId, shardDb } = getShard(productData.code);
@@ -96,7 +95,7 @@ export const useProductStore = create<ProductState>()(
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-            throw new Error(`A product with code "${productData.code}" already exists in shard "${shardId}".`);
+            throw new Error(`Un prodotto con codice "${productData.code}" esiste già nello shard "${shardId}".`);
         }
 
         const productDataToSave = {
@@ -122,19 +121,19 @@ export const useProductStore = create<ProductState>()(
       updateProductInStoreAndFirestore: async (productId, serverId, updatedData) => {
         const { userRole, isAuthenticated, uid } = useAuthStore.getState();
         if (!isAuthenticated || userRole !== 'admin') {
-          throw new Error("User must be an admin to update products.");
+          throw new Error("L'utente deve essere un amministratore per aggiornare i prodotti.");
         }
         
         const shardDb = shards[serverId as keyof typeof shards];
         if (!shardDb) {
-            throw new Error(`Invalid serverId/shard: ${serverId}`);
+            throw new Error(`ServerId/shard non valido: ${serverId}`);
         }
 
         const productDocRef = doc(shardDb, 'products', productId);
         
         const currentProduct = get().products.find(p => p.id === productId);
         if (currentProduct?.addedByUid !== uid) {
-            throw new Error("Admin can only update their own products.");
+            throw new Error("L'amministratore può aggiornare solo i propri prodotti.");
         }
 
         await updateDoc(productDocRef, updatedData);
@@ -150,19 +149,19 @@ export const useProductStore = create<ProductState>()(
       deleteProductFromStoreAndFirestore: async (productId, serverId) => {
         const { userRole, isAuthenticated, uid } = useAuthStore.getState();
          if (!isAuthenticated || userRole !== 'admin') {
-          throw new Error("User must be an admin to delete products.");
+          throw new Error("L'utente deve essere un amministratore per eliminare i prodotti.");
         }
 
         const shardDb = shards[serverId as keyof typeof shards];
         if (!shardDb) {
-            throw new Error(`Invalid serverId/shard: ${serverId}`);
+            throw new Error(`ServerId/shard non valido: ${serverId}`);
         }
 
         const productDocRef = doc(shardDb, 'products', productId);
 
         const currentProduct = get().products.find(p => p.id === productId);
         if (currentProduct?.addedByUid !== uid) {
-            throw new Error("Admin can only delete their own products.");
+            throw new Error("L'amministratore può eliminare solo i propri prodotti.");
         }
 
         await deleteDoc(productDocRef);
@@ -226,19 +225,19 @@ if (typeof window !== 'undefined') {
       
       if (previousAuthState.isLoading && !currentAuthState.isLoading) {
         if (currentAuthState.isAuthenticated) {
-          console.log("ProductStore: Auth loaded, user authenticated. Fetching products.");
+          console.log("ProductStore: Autenticazione caricata, utente autenticato. Recupero prodotti.");
           productStore.fetchProductsFromFirestore();
         } else {
-          console.log("ProductStore: Auth loaded, user not authenticated. Clearing products.");
+          console.log("ProductStore: Autenticazione caricata, utente non autenticato. Pulisco prodotti.");
           productStore.clearSearchAndResults();
         }
       }
       else if (!previousAuthState.isAuthenticated && currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
-        console.log("ProductStore: User logged in. Fetching products.");
+        console.log("ProductStore: Utente loggato. Recupero prodotti.");
         productStore.fetchProductsFromFirestore();
       }
       else if (previousAuthState.isAuthenticated && !currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
-        console.log("ProductStore: User logged out. Clearing products.");
+        console.log("ProductStore: Utente disconnesso. Pulisco prodotti.");
         productStore.clearSearchAndResults();
       }
     }
