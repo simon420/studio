@@ -4,7 +4,7 @@ import { getAdminServices } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin'; // Still needed for type definitions like UserRecord
 
 export async function POST(request: Request) {
-  // Use the centralized function to get admin services.
+  // Use the centralized function to get admin services INSIDE the request handler.
   const { adminDb, adminAuth, error: adminInitializationError } = getAdminServices();
 
   if (adminInitializationError || !adminDb || !adminAuth) {
