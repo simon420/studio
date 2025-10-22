@@ -7,16 +7,21 @@ import {
   signInWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
+  Unsubscribe,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { UserRole, UserFirestoreData } from '@/lib/types';
+import { useUserManagementStore } from './user-management-store';
+
+let sessionListener: Unsubscribe | null = null;
 
 interface AuthState {
   firebaseUser: FirebaseUser | null;
   email: string | null;
   uid: string | null;
   userRole: UserRole | 'guest';
+  sessionVersion: number;
   isAuthenticated: boolean;
   isLoading: boolean; // To handle async auth state loading
   requestAdminRegistration: (email: string, password: string) => Promise<void>;
@@ -24,7 +29,9 @@ interface AuthState {
   register: (email: string, password: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
   _updateAuthData: (user: FirebaseUser | null) => Promise<void>; // Internal helper, now async
-  _fetchUserRole: (uid: string) => Promise<UserRole | 'guest'>; // Internal helper to fetch role
+  _fetchUserData: (uid: string) => Promise<UserFirestoreData | null>; // Fetches the full user document
+  _cleanupSessionListener: () => void;
+  verifyCurrentUser: () => void;
 }
 
 const initialAuthState = {
@@ -32,6 +39,7 @@ const initialAuthState = {
   email: null,
   uid: null,
   userRole: 'guest' as UserRole | 'guest',
+  sessionVersion: 0,
   isAuthenticated: false,
   isLoading: true, // Start in loading state until first auth check
 };
@@ -45,7 +53,7 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         set({ isLoading: true });
         try {
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          await signInWithEmailAndPassword(auth, email, password);
           // onAuthStateChanged will handle setting the rest of the state
         } catch (error: any) {
           set({ isLoading: false });
@@ -77,6 +85,7 @@ export const useAuthStore = create<AuthState>()(
             email: firebaseUser.email,
             role: role,
             createdAt: serverTimestamp(),
+            sessionVersion: 1, // Initial session version
           };
           await setDoc(userDocRef, userData);
         } catch (error: any) {
@@ -126,60 +135,97 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error('Firebase logout error:', error);
         } finally {
+          get()._cleanupSessionListener();
           set({ ...initialAuthState, isLoading: false });
         }
       },
+      
+      _cleanupSessionListener: () => {
+        if (sessionListener) {
+          sessionListener();
+          sessionListener = null;
+        }
+      },
 
-      _fetchUserRole: async (uid: string): Promise<UserRole | 'guest'> => {
+      _fetchUserData: async (uid: string): Promise<UserFirestoreData | null> => {
         try {
           const userDocRef = doc(db, 'users', uid);
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
-            const userData = userDocSnap.data() as UserFirestoreData;
-            return userData.role;
-          } else {
-             // Check if there is a pending admin request. If so, it's a critical state.
-             // For now, treat as guest and deny access. The login logic should prevent this.
-            console.warn('Documento utente non trovato in Firestore per UID:', uid, "- l'utente potrebbe non avere un ruolo assegnato o essere in attesa di approvazione.");
-            return 'guest'; 
+            return userDocSnap.data() as UserFirestoreData;
           }
+          return null;
         } catch (error) {
           console.error('Errore nel recupero del ruolo utente da Firestore:', error);
-          return 'guest'; // Fallback on error
+          return null; // Fallback on error
         }
       },
 
       _updateAuthData: async (fbUser) => {
+        get()._cleanupSessionListener();
+
         if (fbUser) {
           set(state => ({ ...state, isLoading: true }));
           try {
-            const role = await get()._fetchUserRole(fbUser.uid);
+            const userData = await get()._fetchUserData(fbUser.uid);
 
-            if (role === 'guest') {
-              // This is a critical case. User is authenticated with Firebase but has no role document.
-              // This can happen if an admin request is pending but not approved.
-              // We sign them out to prevent unauthorized access as a 'guest'.
-              await signOut(auth);
-              set({ ...initialAuthState, isLoading: false });
+            if (!userData || userData.role === 'guest') {
+              await get().logout();
             } else {
               set({
                 firebaseUser: fbUser,
                 email: fbUser.email,
                 uid: fbUser.uid,
-                userRole: role,
+                userRole: userData.role,
+                sessionVersion: userData.sessionVersion || 1,
                 isAuthenticated: true,
                 isLoading: false,
+              });
+
+              // Start listening for session changes
+              const userDocRef = doc(db, 'users', fbUser.uid);
+              sessionListener = onSnapshot(userDocRef, (docSnap) => {
+                if (docSnap.exists()) {
+                  const newUserData = docSnap.data() as UserFirestoreData;
+                  const localSessionVersion = get().sessionVersion;
+                  
+                  if (newUserData.sessionVersion && newUserData.sessionVersion > localSessionVersion) {
+                    console.log("Sessione revocata dal server. Logout forzato.");
+                    get().logout();
+                  }
+                } else {
+                  // Document was deleted, force logout
+                  console.log("Documento utente eliminato. Logout forzato.");
+                  get().logout();
+                }
               });
             }
           } catch (error) {
             console.error("Errore durante il recupero del ruolo in _updateAuthData:", error);
-            await signOut(auth); // Sign out on error to be safe
-            set({ ...initialAuthState, isLoading: false });
+            await get().logout();
           }
         } else {
           set({ ...initialAuthState, isLoading: false });
         }
       },
+      
+      verifyCurrentUser: () => {
+        const { uid, isAuthenticated } = get();
+        if (!isAuthenticated || !uid) return;
+
+        // Since we have a real-time listener on the user's own document,
+        // we can rely on that for immediate revocation.
+        // We can double-check against the full list from the user management store
+        // if we want an extra layer of security when the list is updated.
+        const allUsers = useUserManagementStore.getState().users;
+        if (allUsers.length > 0) {
+            const userExists = allUsers.some(user => user.uid === uid);
+            if (!userExists) {
+                console.log("L'utente non è più nella lista degli utenti validi. Logout forzato.");
+                get().logout();
+            }
+        }
+      }
     }),
     { name: "AuthStore" } 
   )

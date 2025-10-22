@@ -5,7 +5,7 @@ import { useAuthStore } from './auth-store';
 import { useNotificationStore } from './notification-store';
 import { useProductStore } from './product-store';
 import { db } from '@/lib/firebase';
-import { collection, onSnapshot, query, Unsubscribe, DocumentChange, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, Unsubscribe, DocumentChange, Timestamp, doc, updateDoc } from 'firebase/firestore';
 import type { UserFirestoreData, Notification } from '@/lib/types';
 
 
@@ -25,6 +25,7 @@ interface UserManagementState {
   cleanupUserListener: () => void;
   deleteUser: (uid: string) => Promise<void>;
   deleteAdminUserAndManageProducts: (uid: string, productAction: 'reassign' | 'delete') => Promise<void>;
+  revokeUserSession: (uid: string) => Promise<void>;
 }
 
 export const useUserManagementStore = create<UserManagementState>()(
@@ -48,7 +49,7 @@ export const useUserManagementStore = create<UserManagementState>()(
           const q = query(collection(db, 'users'));
 
           userListener = onSnapshot(q, (snapshot) => {
-              const { addNotification } = useNotificationStore.getState();
+              const { addNotification, ...authStore } = useNotificationStore.getState();
 
               snapshot.docChanges().forEach((change: DocumentChange) => {
                   const userData = change.doc.data() as UserFirestoreData;
@@ -77,6 +78,9 @@ export const useUserManagementStore = create<UserManagementState>()(
               
               set({ users: usersData, isLoading: false });
 
+              // Verify the current user's validity after the user list is updated
+              useAuthStore.getState().verifyCurrentUser();
+
           }, (error) => {
               console.error("Errore nel listener degli utenti:", error);
               set({ error: error.message, isLoading: false });
@@ -92,6 +96,18 @@ export const useUserManagementStore = create<UserManagementState>()(
         set({ users: [], isLoading: true, error: null });
       },
       
+      revokeUserSession: async (uid: string) => {
+        const userDocRef = doc(db, 'users', uid);
+        try {
+          await updateDoc(userDocRef, {
+            sessionVersion: Math.floor(Date.now() / 1000) // Use a timestamp as a new version
+          });
+        } catch (error) {
+          console.error(`Impossibile revocare la sessione per l'utente ${uid}:`, error);
+          // Don't re-throw, as we want to proceed with deletion anyway
+        }
+      },
+
       deleteAdminUserAndManageProducts: async (uid, productAction) => {
         const { userRole, uid: superAdminUid, email: superAdminEmail } = useAuthStore.getState();
         if (userRole !== 'super-admin' || !superAdminUid || !superAdminEmail) {
@@ -101,6 +117,9 @@ export const useUserManagementStore = create<UserManagementState>()(
         const { products, superAdminUpdateProduct, superAdminDeleteProduct } = useProductStore.getState();
         const adminProducts = products.filter(p => p.addedByUid === uid);
         
+        // Revoke session first to force an immediate logout on the admin's client
+        await get().revokeUserSession(uid);
+
         // Step 1: Manage products
         if (productAction === 'reassign') {
             const updatedData = { addedByUid: superAdminUid, addedByEmail: superAdminEmail };
@@ -124,6 +143,12 @@ export const useUserManagementStore = create<UserManagementState>()(
         const { userRole } = useAuthStore.getState();
         if (userRole !== 'super-admin') {
           throw new Error('Solo i super-amministratori possono eliminare gli utenti.');
+        }
+
+        // Revoke session for non-admin users as well
+        const userToDelete = get().users.find(u => u.uid === uid);
+        if (userToDelete && userToDelete.role !== 'admin') {
+          await get().revokeUserSession(uid);
         }
 
         try {

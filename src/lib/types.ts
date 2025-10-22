@@ -20,6 +20,7 @@ export type UserFirestoreData = {
   email: string | null; // Email from Firebase Auth
   role: UserRole;
   createdAt?: any; // Firestore ServerTimestamp
+  sessionVersion?: number; // Used for real-time session revocation
 };
 
 // This type is for the new admin registration request flow
