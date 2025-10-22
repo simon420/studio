@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AdminRequests from '@/components/admin-requests';
-import { Loader2, LogOut, ShieldCheck, ShieldAlert, Package, UserPlus, Users, PackagePlus } from 'lucide-react';
+import { Loader2, LogOut, ShieldCheck, ShieldAlert, Package, UserPlus, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import SuperAdminProductsList from '@/components/super-admin-products-list'; 
 import ProductInputForm from '@/components/product-input-form';
@@ -90,22 +90,38 @@ export default function SuperAdminDashboardPage() {
               <TabsList>
                 <TabsTrigger value="products"><Package className="mr-2" /> Gestione Prodotti</TabsTrigger>
                 <TabsTrigger value="users"><Users className="mr-2" /> Gestione Utenti</TabsTrigger>
-                <TabsTrigger value="add-product"><PackagePlus className="mr-2" /> Aggiungi Prodotto</TabsTrigger>
                 <TabsTrigger value="admin-requests"><UserPlus className="mr-2" /> Richieste Admin</TabsTrigger>
               </TabsList>
 
               <TabsContent value="products">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Gestione Prodotti Totale</CardTitle>
-                    <CardDescription>
-                      Visualizza, cerca, modifica ed elimina qualsiasi prodotto nel sistema.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <SuperAdminProductsList />
-                  </CardContent>
-                </Card>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-1">
+                        <Card>
+                             <CardHeader>
+                               <CardTitle>Aggiungi Nuovo Prodotto</CardTitle>
+                                 <CardDescription>
+                                 Aggiungi un nuovo prodotto al sistema da qui.
+                               </CardDescription>
+                             </CardHeader>
+                             <CardContent>
+                               <ProductInputForm />
+                             </CardContent>
+                        </Card>
+                    </div>
+                    <div className="lg:col-span-2">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Tutti i Prodotti</CardTitle>
+                                <CardDescription>
+                                Visualizza, cerca, modifica ed elimina qualsiasi prodotto.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <SuperAdminProductsList />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
               </TabsContent>
 
               <TabsContent value="users">
@@ -120,20 +136,6 @@ export default function SuperAdminDashboardPage() {
                       <UserManagement />
                     </CardContent>
                 </Card>
-              </TabsContent>
-
-              <TabsContent value="add-product">
-                <Card>
-                    <CardHeader>
-                      <CardTitle>Aggiungi Nuovo Prodotto</CardTitle>
-                        <CardDescription>
-                        Aggiungi un nuovo prodotto al sistema da qui. Verrà assegnato allo shard corretto in base al codice.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <ProductInputForm />
-                    </CardContent>
-                  </Card>
               </TabsContent>
 
               <TabsContent value="admin-requests">
