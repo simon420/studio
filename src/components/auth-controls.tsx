@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LogOut, User, ShieldCheck, LogIn, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import NotificationCenter from './notification-center'; // Import NotificationCenter
 
 export default function AuthControls() {
   const { email, userRole, isAuthenticated, logout, isLoading: authIsLoading } = useAuthStore();
@@ -75,17 +76,23 @@ export default function AuthControls() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Autenticazione</CardTitle>
-        <CardDescription className="flex items-center min-h-[20px]"> {/* Added min-height */}
-          {isAuthenticated ? (
-            <>
-              Accesso come: <span className="font-semibold ml-1">{email || 'Utente'}</span> ({userRole})
-              {getRoleIcon()}
-            </>
-          ) : (
-            'Non hai effettuato l\'accesso.'
-          )}
-        </CardDescription>
+        <div className="flex justify-between items-start">
+            <div>
+                <CardTitle>Autenticazione</CardTitle>
+                <CardDescription className="flex items-center min-h-[20px]"> {/* Added min-height */}
+                {isAuthenticated ? (
+                    <>
+                    Accesso come: <span className="font-semibold ml-1">{email || 'Utente'}</span> ({userRole})
+                    {getRoleIcon()}
+                    </>
+                ) : (
+                    'Non hai effettuato l\'accesso.'
+                )}
+                </CardDescription>
+            </div>
+            {/* Show NotificationCenter only for authenticated admin/user */}
+            {isAuthenticated && (userRole === 'admin' || userRole === 'user') && <NotificationCenter />}
+        </div>
       </CardHeader>
       <CardContent className="flex flex-col sm:flex-row gap-2">
         {isAuthenticated ? (
