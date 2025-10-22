@@ -125,7 +125,10 @@ export default function UserManagement() {
                 <TableRow key={user.uid}>
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>
-                     <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                     <Badge variant={
+                        user.role === 'super-admin' ? 'destructive' :
+                        user.role === 'admin' ? 'default' : 'secondary'
+                      }>
                        {user.role}
                      </Badge>
                   </TableCell>
@@ -140,7 +143,7 @@ export default function UserManagement() {
                       variant="destructive"
                       size="sm"
                       onClick={() => openDeleteDialog(user)}
-                      disabled={isDeleting || user.uid === currentSuperAdminUid}
+                      disabled={isDeleting || user.role === 'super-admin'}
                       aria-label="Elimina utente"
                     >
                       {isDeleting && userToDelete?.uid === user.uid ? (
