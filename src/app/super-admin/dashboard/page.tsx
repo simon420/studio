@@ -7,8 +7,10 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AdminRequests from '@/components/admin-requests';
-import { Loader2, LogOut, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Loader2, LogOut, ShieldCheck, ShieldAlert, Package, UserPlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import SuperAdminProductsList from '@/components/super-admin-products-list'; // Import the new component
+import ProductInputForm from '@/components/product-input-form';
 
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
@@ -85,17 +87,46 @@ export default function SuperAdminDashboardPage() {
           </header>
 
           <main className="space-y-8">
-             <Card>
-                <CardHeader>
-                  <CardTitle>Richieste di Registrazione Admin</CardTitle>
-                  <CardDescription>
-                    Approva o rifiuta le richieste per i nuovi account admin.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <AdminRequests />
-                </CardContent>
-              </Card>
+             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-1 space-y-8">
+                  <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center"><UserPlus className="mr-2"/> Richieste Admin</CardTitle>
+                        <CardDescription>
+                          Approva o rifiuta le richieste per i nuovi account admin.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <AdminRequests />
+                      </CardContent>
+                  </Card>
+                   <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center"><Package className="mr-2"/> Aggiungi Prodotto</CardTitle>
+                         <CardDescription>
+                          Aggiungi un nuovo prodotto al sistema da qui.
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <ProductInputForm />
+                      </CardContent>
+                   </Card>
+                </div>
+
+                <div className="lg:col-span-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Gestione Prodotti Totale</CardTitle>
+                      <CardDescription>
+                        Visualizza, modifica ed elimina qualsiasi prodotto nel sistema.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <SuperAdminProductsList />
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
           </main>
         </div>
       </div>

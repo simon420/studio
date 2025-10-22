@@ -26,6 +26,8 @@ interface ProductState {
   clearSearchAndResults: () => void;
   loadInitialProducts: (initialProducts: Product[]) => void;
   fetchProductsFromFirestore: () => Promise<void>;
+  superAdminUpdateProduct: (productId: string, serverId: string, updatedData: Partial<Pick<Product, 'name' | 'price'>>) => Promise<void>;
+  superAdminDeleteProduct: (productId: string, serverId: string) => Promise<void>;
 }
 
 
@@ -83,39 +85,50 @@ export const useProductStore = create<ProductState>()(
 
       addProduct: async (productData) => {
         const { userRole, isAuthenticated, isLoading: authIsLoading, uid, email } = useAuthStore.getState();
-        if (authIsLoading || !isAuthenticated || userRole !== 'admin') {
+        if (authIsLoading || !isAuthenticated || (userRole !== 'admin' && userRole !== 'super-admin')) {
           throw new Error("Solo gli amministratori possono aggiungere prodotti.");
         }
-
+      
         const { shardId, shardDb } = getShard(productData.code);
         const productsRef = collection(shardDb, 'products');
-
+      
         // Check for duplicate code within the target shard
         const q = query(productsRef, where("code", "==", productData.code));
         const querySnapshot = await getDocs(q);
-
+      
         if (!querySnapshot.empty) {
-            throw new Error(`Un prodotto con codice "${productData.code}" esiste già nello shard "${shardId}".`);
+          throw new Error(`Un prodotto con codice "${productData.code}" esiste già nello shard "${shardId}".`);
         }
-
+      
         const productDataToSave = {
           ...productData,
           addedByUid: uid,
           addedByEmail: email,
         };
-        
-        const docRef = await addDoc(productsRef, productDataToSave);
-        
+      
+        // Use a batch write to ensure atomicity
+        const batch = writeBatch(db); // Main DB for the map
+        const shardBatch = writeBatch(shardDb); // Shard DB for the product
+      
+        const newProductRef = doc(collection(shardDb, 'products'));
+        shardBatch.set(newProductRef, productDataToSave);
+      
+        const mapRef = doc(db, 'product-shard-map', newProductRef.id);
+        batch.set(mapRef, { shardId: shardId });
+      
+        await shardBatch.commit();
+        await batch.commit();
+      
         const newProductWithId: Product = {
-            ...productDataToSave,
-            id: docRef.id,
-            serverId: shardId,
+          ...productDataToSave,
+          id: newProductRef.id,
+          serverId: shardId,
         };
-
+      
         set((state) => ({
-            products: [...state.products, newProductWithId],
+          products: [...state.products, newProductWithId],
         }));
-        get().filterProducts(); 
+        get().filterProducts();
       },
 
       updateProductInStoreAndFirestore: async (productId, serverId, updatedData) => {
@@ -156,22 +169,82 @@ export const useProductStore = create<ProductState>()(
         if (!shardDb) {
             throw new Error(`ServerId/shard non valido: ${serverId}`);
         }
-
-        const productDocRef = doc(shardDb, 'products', productId);
-
+        
         const currentProduct = get().products.find(p => p.id === productId);
         if (currentProduct?.addedByUid !== uid) {
             throw new Error("L'amministratore può eliminare solo i propri prodotti.");
         }
 
-        await deleteDoc(productDocRef);
+        // Use batch to delete from shard and from map
+        const shardBatch = writeBatch(shardDb);
+        const mainDbBatch = writeBatch(db);
 
+        const productDocRef = doc(shardDb, 'products', productId);
+        shardBatch.delete(productDocRef);
+
+        const mapDocRef = doc(db, 'product-shard-map', productId);
+        mainDbBatch.delete(mapDocRef);
+
+        await shardBatch.commit();
+        await mainDbBatch.commit();
+
+        // Update local state after successful deletion
         set((state) => ({
           products: state.products.filter((product) => product.id !== productId),
         }));
         get().filterProducts();
       },
 
+      superAdminUpdateProduct: async (productId, serverId, updatedData) => {
+        const { userRole, isAuthenticated } = useAuthStore.getState();
+        if (!isAuthenticated || userRole !== 'super-admin') {
+          throw new Error("Solo i super-amministratori possono eseguire questa azione.");
+        }
+
+        const shardDb = shards[serverId as keyof typeof shards];
+        if (!shardDb) {
+            throw new Error(`ServerId/shard non valido: ${serverId}`);
+        }
+
+        const productDocRef = doc(shardDb, 'products', productId);
+        await updateDoc(productDocRef, updatedData);
+
+        set((state) => ({
+          products: state.products.map((product) =>
+            product.id === productId ? { ...product, ...updatedData } : product
+          ),
+        }));
+        get().filterProducts();
+      },
+
+      superAdminDeleteProduct: async (productId, serverId) => {
+        const { userRole, isAuthenticated } = useAuthStore.getState();
+         if (!isAuthenticated || userRole !== 'super-admin') {
+          throw new Error("Solo i super-amministratori possono eseguire questa azione.");
+        }
+
+        const shardDb = shards[serverId as keyof typeof shards];
+        if (!shardDb) {
+            throw new Error(`ServerId/shard non valido: ${serverId}`);
+        }
+
+        const shardBatch = writeBatch(shardDb);
+        const mainDbBatch = writeBatch(db);
+
+        const productDocRef = doc(shardDb, 'products', productId);
+        shardBatch.delete(productDocRef);
+
+        const mapDocRef = doc(db, 'product-shard-map', productId);
+        mainDbBatch.delete(mapDocRef);
+
+        await shardBatch.commit();
+        await mainDbBatch.commit();
+
+        set((state) => ({
+          products: state.products.filter((product) => product.id !== productId),
+        }));
+        get().filterProducts();
+      },
 
       filterProducts: () => {
         const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
