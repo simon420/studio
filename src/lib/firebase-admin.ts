@@ -1,3 +1,4 @@
+
 // src/lib/firebase-admin.ts
 import * as admin from 'firebase-admin';
 
@@ -31,15 +32,14 @@ export function getAdminServices() {
   console.log('FIREBASE_SERVICE_ACCOUNT_KEY environment variable found. Attempting to initialize Admin SDK...');
 
   try {
-    // Replace escaped newlines with actual newlines, as requested.
-    // This is often necessary when private keys are passed through environment variables.
-    const serviceAccountString = serviceAccountEnv.replace(/\\n/g, '\n');
-    
-    // We need to parse the JSON string from the environment variable.
-    const serviceAccount = JSON.parse(serviceAccountString);
+    const serviceAccount = JSON.parse(serviceAccountEnv);
 
+    // Initialize with the corrected private key format
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
+      credential: admin.credential.cert({
+        ...serviceAccount,
+        private_key: serviceAccount.private_key.replace(/\\n/g, '\n'),
+      }),
     });
     
     console.log('Firebase Admin SDK initialized successfully in getAdminServices.');
