@@ -13,6 +13,7 @@ import SuperAdminProductsList from '@/components/super-admin-products-list';
 import ProductInputForm from '@/components/product-input-form';
 import UserManagement from '@/components/user-management';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import NotificationCenter from '@/components/notification-center';
 
 
 export default function SuperAdminDashboardPage() {
@@ -79,10 +80,13 @@ export default function SuperAdminDashboardPage() {
                 <p className="text-muted-foreground">Gestione completa delle risorse dell'applicazione.</p>
               </div>
             </div>
-            <Button onClick={handleLogout} variant="destructive" size="sm" disabled={isLoggingOut}>
-              {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <LogOut className="mr-2 h-4 w-4" />}
-              {isLoggingOut ? 'Disconnessione...' : 'Logout'}
-            </Button>
+            <div className="flex items-center gap-2">
+              <NotificationCenter />
+              <Button onClick={handleLogout} variant="destructive" size="sm" disabled={isLoggingOut}>
+                {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <LogOut className="mr-2 h-4 w-4" />}
+                {isLoggingOut ? 'Disconnessione...' : 'Logout'}
+              </Button>
+            </div>
           </header>
 
           <main>

@@ -29,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth-store';
 import type { UserRole } from '@/lib/types';
 import { UserPlus, Loader2 } from 'lucide-react';
+import { useNotificationStore } from '@/store/notification-store';
 
 const registerSchema = z.object({
   email: z.string().email('Indirizzo email non valido').min(1, 'Email è richiesta'),
@@ -46,6 +47,7 @@ export default function RegisterForm() {
   const { toast } = useToast();
   const { register, requestAdminRegistration, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
   const [isSubmittingForm, setIsSubmittingForm] = React.useState(false);
+  const addNotification = useNotificationStore((state) => state.addNotification);
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -74,6 +76,10 @@ export default function RegisterForm() {
                 title: 'Richiesta Inviata',
                 description: 'La tua richiesta di registrazione come admin è stata inviata per approvazione.',
             });
+            addNotification({
+                type: 'admin_request',
+                message: `Nuova richiesta admin da: ${values.email}`,
+            });
             router.push('/login');
         } else {
             await register(values.email, values.password, values.role);
@@ -81,6 +87,10 @@ export default function RegisterForm() {
             toast({
                 title: 'Registrazione Riuscita',
                 description: 'Benvenuto! Login in corso...',
+            });
+             addNotification({
+                type: 'user_registered',
+                message: `Nuovo utente registrato: ${values.email}`,
             });
         }
     } catch (error: any) {

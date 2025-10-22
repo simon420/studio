@@ -29,6 +29,16 @@ export type AdminRequest = {
     requestedAt: any; // Firestore Timestamp
 }
 
+// Type for the notification system
+export type Notification = {
+  id: string;
+  timestamp: number;
+  type: 'product_added' | 'product_updated' | 'product_deleted' | 'admin_request' | 'user_registered' | 'user_approved';
+  message: string;
+  read: boolean;
+};
+
+
 
 // SessionPayload is no longer needed with Firebase Auth handling sessions.
 // If you pass ID tokens to backend, you might define a type for the decoded token.

@@ -3,7 +3,8 @@ import { devtools } from 'zustand/middleware';
 import type { Product } from '@/lib/types';
 import { useAuthStore } from './auth-store';
 import { db, shards } from '@/lib/firebase'; 
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, Firestore, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, Firestore, onSnapshot, Unsubscribe, DocumentChange } from 'firebase/firestore';
+import { useNotificationStore } from './notification-store';
 
 const shardIds = ['shard-a', 'shard-b', 'shard-c'];
 
@@ -47,7 +48,9 @@ export const useProductStore = create<ProductState>()(
       },
       
       listenToAllProductShards: () => {
-        const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
+        const { isAuthenticated, isLoading: authIsLoading, uid: currentUserId } = useAuthStore.getState();
+        const { addNotification } = useNotificationStore.getState();
+
         if (authIsLoading || !isAuthenticated) {
           get().clearSearchAndResults();
           return;
@@ -69,7 +72,45 @@ export const useProductStore = create<ProductState>()(
           const productCollection = collection(shardDb, 'products');
 
           const unsubscribe = onSnapshot(productCollection, (snapshot) => {
-            const productList: Product[] = snapshot.docs.map(docSnap => {
+             const productList = get().products;
+             const isInitialLoad = productList.length === 0;
+
+             snapshot.docChanges().forEach((change: DocumentChange) => {
+                const productData = {
+                    id: change.doc.id,
+                    ...change.doc.data(),
+                    serverId: shardId
+                } as Product;
+
+                // Don't notify for user's own actions
+                if (productData.addedByUid === currentUserId) {
+                    return; 
+                }
+
+                if (change.type === "added" && !isInitialLoad) {
+                     addNotification({
+                         type: 'product_added',
+                         message: `Nuovo prodotto aggiunto da ${productData.addedByEmail}: "${productData.name}"`,
+                     });
+                }
+                if (change.type === "modified") {
+                     addNotification({
+                         type: 'product_updated',
+                         message: `Prodotto "${productData.name}" aggiornato da ${productData.addedByEmail}.`,
+                     });
+                }
+                if (change.type === "removed") {
+                    // For deleted products, we might need to find its data before it's gone
+                    // This implementation will show the name if available, otherwise a generic message
+                     addNotification({
+                         type: 'product_deleted',
+                         message: `Prodotto "${productData.name || 'sconosciuto'}" eliminato da ${productData.addedByEmail}.`,
+                     });
+                }
+             });
+
+
+            const fullProductList: Product[] = snapshot.docs.map(docSnap => {
               const data = docSnap.data();
               return {
                 id: docSnap.id,
@@ -81,7 +122,7 @@ export const useProductStore = create<ProductState>()(
                 addedByEmail: data.addedByEmail,
               };
             });
-            productsByShard[shardId] = productList;
+            productsByShard[shardId] = fullProductList;
             updateCombinedProducts();
           }, (error) => {
             console.error(`Errore di ascolto per lo shard ${shardId}:`, error);
