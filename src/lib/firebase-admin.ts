@@ -1,13 +1,11 @@
-
 // src/lib/firebase-admin.ts
 import * as admin from 'firebase-admin';
 
-// This function ensures the Firebase Admin SDK is initialized and returns its services.
-// It's designed to be idempotent, meaning it will only initialize the app once.
+// Questa funzione assicura che Firebase Admin SDK sia inizializzato e restituisce i suoi servizi.
+// È progettata per essere idempotente (esegue l'inizializzazione solo una volta).
 export function getAdminServices() {
-  // If the admin app is already initialized, return the services immediately.
+  // Se l'app admin è già inizializzata, restituisce immediatamente i servizi.
   if (admin.apps.length > 0 && admin.app()) {
-    console.log('Firebase Admin SDK already initialized. Returning existing services.');
     try {
         return {
             adminDb: admin.firestore(),
@@ -20,21 +18,20 @@ export function getAdminServices() {
     }
   }
 
-  // IMPORTANT: The service account key is securely loaded from an environment variable.
-  // This variable is managed by the Firebase Studio environment and should not be set manually.
+  // IMPORTANTE: la chiave di servizio viene caricata in modo sicuro da una variabile d'ambiente.
+  // Questa variabile ora è gestita tramite il file .env.local.
   const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!serviceAccountEnv) {
-    const error = 'CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set or empty.';
+
+  if (!serviceAccountEnv || serviceAccountEnv === 'INCOLLA QUI LA TUA CHIAVE DI SERVIZIO JSON COMPLETA') {
+    const error = 'CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY non è impostata nel file .env.local.';
     console.error(error);
     return { adminDb: null, adminAuth: null, error };
   }
 
-  console.log('FIREBASE_SERVICE_ACCOUNT_KEY environment variable found. Attempting to initialize Admin SDK...');
-
   try {
     const serviceAccount = JSON.parse(serviceAccountEnv);
 
-    // Initialize with the corrected private key format
+    // Inizializza con il formato corretto della chiave privata
     admin.initializeApp({
       credential: admin.credential.cert({
         ...serviceAccount,
@@ -42,7 +39,7 @@ export function getAdminServices() {
       }),
     });
     
-    console.log('Firebase Admin SDK initialized successfully in getAdminServices.');
+    console.log('Firebase Admin SDK initialized successfully from .env.local.');
     
     return {
       adminDb: admin.firestore(),
@@ -51,14 +48,12 @@ export function getAdminServices() {
     };
   } catch (e: any) {
     let error;
-    if (e instanceof SyntaxError) { // More specific error check for JSON parsing
-      error = `Error parsing FIREBASE_SERVICE_ACCOUNT_KEY as JSON: ${e.message}`;
+    if (e instanceof SyntaxError) {
+      error = `Errore nel parsing di FIREBASE_SERVICE_ACCOUNT_KEY come JSON: ${e.message}. Assicurati che sia una stringa JSON valida.`;
     } else {
-      error = `Error initializing Firebase Admin SDK with parsed credentials: ${e.message}`;
+      error = `Errore nell'inizializzazione di Firebase Admin SDK: ${e.message}`;
     }
     console.error(error);
-    // Log the first few characters of the env var to check if it's there without exposing it.
-    console.error(`Received FIREBASE_SERVICE_ACCOUNT_KEY starting with: ${serviceAccountEnv.substring(0, 30)}...`);
     return { adminDb: null, adminAuth: null, error };
   }
 }
