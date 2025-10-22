@@ -15,7 +15,8 @@ import ProductInputForm from '@/components/product-input-form';
 import SearchResults from '@/components/search-results';
 import AuthControls from '@/components/auth-controls';
 import AdminProductsList from '@/components/admin-products-list'; // Import the new component
-import AdminRequests from '@/components/admin-requests'; // Import the new component
+// AdminRequests is being removed from this page
+// import AdminRequests from '@/components/admin-requests'; 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { AlertCircle, Loader2, PackageSearch, Search } from 'lucide-react'; // Added PackageSearch, Search
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -74,20 +75,7 @@ export default function Home() {
           </div>
 
           <main className="space-y-8">
-            {/* Admin-only section for requests */}
-            {userRole === 'admin' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Richieste di Registrazione Admin</CardTitle>
-                  <CardDescription>
-                    Approva o rifiuta le richieste per i nuovi account admin.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <AdminRequests />
-                </CardContent>
-              </Card>
-            )}
+            {/* Admin-only section for requests has been removed */}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
