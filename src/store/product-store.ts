@@ -17,6 +17,7 @@ function getShard(productCode: number): { shardId: string; shardDb: Firestore } 
 
 // Keep track of unsubscribe functions for real-time listeners
 let productListeners: Unsubscribe[] = [];
+let listenerAttachTime: number | null = null; // To track when the listener was attached
 
 interface ProductState {
   searchTerm: string;
@@ -48,7 +49,7 @@ export const useProductStore = create<ProductState>()(
       },
       
       listenToAllProductShards: () => {
-        const { isAuthenticated, isLoading: authIsLoading, uid: currentUserId } = useAuthStore.getState();
+        const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
         const { addNotification } = useNotificationStore.getState();
 
         if (authIsLoading || !isAuthenticated) {
@@ -58,6 +59,7 @@ export const useProductStore = create<ProductState>()(
 
         // Clean up any existing listeners before starting new ones
         get().cleanupProductListeners();
+        listenerAttachTime = Date.now(); // Set the timestamp when the listener starts
 
         const productsByShard: { [key: string]: Product[] } = {};
 
@@ -72,40 +74,37 @@ export const useProductStore = create<ProductState>()(
           const productCollection = collection(shardDb, 'products');
 
           const unsubscribe = onSnapshot(productCollection, (snapshot) => {
-             const productList = get().products;
-             const isInitialLoad = productList.length === 0;
-
              snapshot.docChanges().forEach((change: DocumentChange) => {
                 const productData = {
                     id: change.doc.id,
                     ...change.doc.data(),
                     serverId: shardId
                 } as Product;
+                
+                const changeTimestamp = change.doc.createTime.toDate().getTime();
 
-                // Don't notify for user's own actions
-                if (productData.addedByUid === currentUserId) {
-                    return; 
-                }
-
-                if (change.type === "added" && !isInitialLoad) {
-                     addNotification({
-                         type: 'product_added',
-                         message: `Nuovo prodotto aggiunto da ${productData.addedByEmail}: "${productData.name}"`,
-                     });
-                }
-                if (change.type === "modified") {
-                     addNotification({
-                         type: 'product_updated',
-                         message: `Prodotto "${productData.name}" aggiornato da ${productData.addedByEmail}.`,
-                     });
-                }
-                if (change.type === "removed") {
-                    // For deleted products, we might need to find its data before it's gone
-                    // This implementation will show the name if available, otherwise a generic message
-                     addNotification({
-                         type: 'product_deleted',
-                         message: `Prodotto "${productData.name || 'sconosciuto'}" eliminato da ${productData.addedByEmail}.`,
-                     });
+                // Notify only for changes that occurred after the listener was attached
+                if (listenerAttachTime && changeTimestamp > listenerAttachTime) {
+                  if (change.type === "added") {
+                       addNotification({
+                           type: 'product_added',
+                           message: `Nuovo prodotto aggiunto da ${productData.addedByEmail}: "${productData.name}"`,
+                       });
+                  }
+                  if (change.type === "modified") {
+                       addNotification({
+                           type: 'product_updated',
+                           message: `Prodotto "${productData.name}" aggiornato da ${productData.addedByEmail}.`,
+                       });
+                  }
+                  if (change.type === "removed") {
+                      // For deleted products, we might need to find its data before it's gone
+                      // This implementation will show the name if available, otherwise a generic message
+                       addNotification({
+                           type: 'product_deleted',
+                           message: `Prodotto "${productData.name || 'sconosciuto'}" eliminato da ${productData.addedByEmail}.`,
+                       });
+                  }
                 }
              });
 
@@ -135,6 +134,7 @@ export const useProductStore = create<ProductState>()(
       cleanupProductListeners: () => {
         productListeners.forEach(unsubscribe => unsubscribe());
         productListeners = [];
+        listenerAttachTime = null;
       },
 
 
