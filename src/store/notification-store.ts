@@ -5,13 +5,11 @@ import type { Notification } from '@/lib/types';
 
 interface NotificationState {
   notifications: Notification[];
-  unreadCount: number;
   isLoaded: boolean; // To check if state has been rehydrated
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
-  markAsRead: (id: string) => void;
-  markAllAsRead: () => void;
+  markAllAsRead: (idsToMark?: string[]) => void;
   deleteNotification: (id: string) => void;
-  clearAllNotifications: () => void;
+  clearAllNotifications: (idsToClear?: string[]) => void;
 }
 
 export const useNotificationStore = create<NotificationState>()(
@@ -19,7 +17,6 @@ export const useNotificationStore = create<NotificationState>()(
     persist(
       (set, get) => ({
         notifications: [],
-        unreadCount: 0,
         isLoaded: false, // Will be true after rehydration
 
         addNotification: (notificationData) => {
@@ -31,51 +28,40 @@ export const useNotificationStore = create<NotificationState>()(
           };
           set((state) => ({
             notifications: [newNotification, ...state.notifications].slice(0, 50), // Keep last 50
-            unreadCount: state.unreadCount + 1,
           }));
         },
 
-        markAsRead: (id) => {
+        markAllAsRead: (idsToMark) => {
           set((state) => {
-            const notifications = state.notifications.map((n) =>
-              n.id === id && !n.read ? { ...n, read: true } : n
-            );
-            const changed = notifications.some((n, i) => n.read !== state.notifications[i].read);
-            if (changed) {
-              const newUnreadCount = notifications.filter((n) => !n.read).length;
-              return { notifications, unreadCount: newUnreadCount };
-            }
-            return state; // No change
-          });
-        },
+            if (state.notifications.every(n => n.read)) return {};
 
-        markAllAsRead: () => {
-          set((state) => {
-            if (state.unreadCount === 0) return {};
             return {
-              notifications: state.notifications.map((n) => ({ ...n, read: true })),
-              unreadCount: 0,
+              notifications: state.notifications.map((n) => {
+                if (idsToMark) {
+                  // Mark specific notifications as read
+                  return idsToMark.includes(n.id) ? { ...n, read: true } : n;
+                }
+                // Mark all as read if no IDs are provided
+                return { ...n, read: true };
+              }),
             };
           });
         },
         
         deleteNotification: (id: string) => {
-            set((state) => {
-                const notificationToDelete = state.notifications.find(n => n.id === id);
-                if (!notificationToDelete) return state;
-
-                const newNotifications = state.notifications.filter(n => n.id !== id);
-                const newUnreadCount = notificationToDelete.read ? state.unreadCount : state.unreadCount - 1;
-
-                return {
-                    notifications: newNotifications,
-                    unreadCount: Math.max(0, newUnreadCount)
-                };
-            });
+            set((state) => ({
+                notifications: state.notifications.filter(n => n.id !== id),
+            }));
         },
 
-        clearAllNotifications: () => {
-          set({ notifications: [], unreadCount: 0 });
+        clearAllNotifications: (idsToClear) => {
+          if (idsToClear) {
+            set((state) => ({
+              notifications: state.notifications.filter(n => !idsToClear.includes(n.id)),
+            }));
+          } else {
+             set({ notifications: [] });
+          }
         },
       }),
       {

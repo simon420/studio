@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useNotificationStore } from '@/store/notification-store';
+import { useAuthStore } from '@/store/auth-store';
 import {
   Popover,
   PopoverContent,
@@ -37,24 +38,41 @@ function NotificationIcon({ type }: { type: Notification['type'] }) {
 
 
 export default function NotificationCenter() {
-  const { notifications, unreadCount, markAllAsRead, isLoaded, deleteNotification, clearAllNotifications } = useNotificationStore();
+  const { notifications, markAllAsRead, isLoaded, deleteNotification, clearAllNotifications } = useNotificationStore();
+  const { userRole } = useAuthStore();
   const [isOpen, setIsOpen] = React.useState(false);
 
+  const isUserRole = userRole === 'admin' || userRole === 'user';
+  const productNotificationTypes: Notification['type'][] = ['product_added', 'product_updated', 'product_deleted'];
+
+  // Filter notifications based on user role
+  const filteredNotifications = React.useMemo(() => {
+    const sorted = [...notifications].sort((a, b) => b.timestamp - a.timestamp);
+    if (isUserRole) {
+      return sorted.filter(n => productNotificationTypes.includes(n.type));
+    }
+    return sorted; // Super-admin sees all
+  }, [notifications, isUserRole, productNotificationTypes]);
+
+  // Calculate unread count based on filtered notifications
+  const unreadCount = React.useMemo(() => {
+    return filteredNotifications.filter(n => !n.read).length;
+  }, [filteredNotifications]);
+
+
   React.useEffect(() => {
-    // When popover opens, mark all as read
+    // When popover opens, mark all visible (and unread) notifications as read
     if (isOpen && unreadCount > 0) {
-      // Delay marking as read to allow user to see the unread state briefly
       const timer = setTimeout(() => {
-        markAllAsRead();
+        // We only mark the currently visible notifications as read
+        const visibleUnreadIds = filteredNotifications.filter(n => !n.read).map(n => n.id);
+        if(visibleUnreadIds.length > 0) {
+           markAllAsRead(visibleUnreadIds);
+        }
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, unreadCount, markAllAsRead]);
-
-  // Sort notifications by timestamp descending
-  const sortedNotifications = React.useMemo(() => {
-    return [...notifications].sort((a, b) => b.timestamp - a.timestamp);
-  }, [notifications]);
+  }, [isOpen, unreadCount, filteredNotifications, markAllAsRead]);
   
   const handleDelete = (e: React.MouseEvent, id: string) => {
     e.stopPropagation(); // Prevent the popover from closing
@@ -63,7 +81,9 @@ export default function NotificationCenter() {
 
   const handleClearAll = (e: React.MouseEvent) => {
     e.stopPropagation();
-    clearAllNotifications();
+    // Only clear notifications that are visible to the current user role
+    const idsToClear = filteredNotifications.map(n => n.id);
+    clearAllNotifications(idsToClear);
   }
 
   return (
@@ -85,7 +105,7 @@ export default function NotificationCenter() {
       <PopoverContent className="w-80 p-0">
         <div className="p-4 border-b flex items-center justify-between">
           <h3 className="text-lg font-medium">Notifiche</h3>
-           {sortedNotifications.length > 0 && (
+           {filteredNotifications.length > 0 && (
              <Button variant="ghost" size="sm" onClick={handleClearAll}>
                <Trash2 className="h-4 w-4 mr-1" />
                Svuota
@@ -93,9 +113,9 @@ export default function NotificationCenter() {
            )}
         </div>
         <ScrollArea className="h-96">
-          {isLoaded && sortedNotifications.length > 0 ? (
+          {isLoaded && filteredNotifications.length > 0 ? (
             <div className="divide-y">
-              {sortedNotifications.map((notif) => (
+              {filteredNotifications.map((notif) => (
                 <div
                   key={notif.id}
                   className={cn(
