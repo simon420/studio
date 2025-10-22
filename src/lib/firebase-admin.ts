@@ -1,6 +1,7 @@
 // src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
 import path from 'path';
+import fs from 'fs';
 
 // Questa funzione assicura che Firebase Admin SDK sia inizializzato e restituisce i suoi servizi.
 // È progettata per essere idempotente (esegue l'inizializzazione solo una volta).
@@ -19,11 +20,11 @@ export function getAdminServices() {
     }
   }
 
-  // Inizializzazione tramite file JSON delle credenziali
+  // Inizializzazione tramite file JSON delle credenziali letto dal filesystem
   try {
     const serviceAccountPath = path.resolve(process.cwd(), 'firebase-service-account.json');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const serviceAccount = require(serviceAccountPath);
+    const serviceAccountFile = fs.readFileSync(serviceAccountPath, 'utf-8');
+    const serviceAccount = JSON.parse(serviceAccountFile);
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
@@ -38,10 +39,10 @@ export function getAdminServices() {
     };
   } catch (e: any) {
     let errorMessage = `Errore nell'inizializzazione di Firebase Admin SDK: ${e.message}`;
-    if (e.code === 'MODULE_NOT_FOUND') {
+    if (e instanceof SyntaxError) {
+        errorMessage = "CRITICAL: Errore nel parsing del file 'firebase-service-account.json'. Assicurati che sia un JSON valido.";
+    } else if (e.code === 'ENOENT') { // ENOENT: Error NO ENTry (file not found)
       errorMessage = "CRITICAL: File 'firebase-service-account.json' non trovato. Assicurati che il file esista nella root del progetto e contenga le credenziali corrette.";
-    } else if (e.message.includes('Error parsing')) {
-      errorMessage = "CRITICAL: Errore nel parsing del file 'firebase-service-account.json'. Assicurati che sia un JSON valido.";
     }
     
     console.error(errorMessage, e.stack);
