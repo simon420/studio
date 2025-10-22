@@ -37,12 +37,7 @@ export function getAdminServices() {
     // Pulisce la chiave privata: rimuove le virgolette e corregge gli "a capo"
     const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '')
       .replace(/^"|"$/g, '') // Rimuove le virgolette all'inizio e alla fine
-      .replace(/\\n/g, '\n');
-
-    // DEBUG: Stampa la chiave privata per il debug
-    console.log('--- DEBUG PRIVATE KEY START ---');
-    console.log(privateKey);
-    console.log('--- DEBUG PRIVATE KEY END ---');
+      .replace(/\\n/g, '\n'); // Sostituisce i caratteri di a capo letterali
 
     const serviceAccount = {
       type: process.env.FIREBASE_TYPE,
