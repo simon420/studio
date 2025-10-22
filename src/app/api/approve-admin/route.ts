@@ -4,17 +4,21 @@ import { getAdminServices } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 
 export async function POST(request: Request) {
-  // La chiamata a getAdminServices() viene eseguita QUI, all'interno della richiesta,
-  // per garantire che l'ambiente server sia completamente caricato.
   const { adminDb, adminAuth, error: adminInitializationError } = getAdminServices();
 
-  // Questo controllo è la nostra rete di sicurezza.
-  // 1. adminInitializationError: Verifica se c'è stato un errore esplicito durante l'inizializzazione (es. chiave di servizio mancante).
-  // 2. !adminDb || !adminAuth: Verifica che, anche in assenza di errori, abbiamo ottenuto istanze valide dei servizi.
-  // Se una di queste condizioni è vera, significa che l'Admin SDK non è pronto e l'operazione non può continuare.
-  if (adminInitializationError || !adminDb || !adminAuth) {
-    console.error('API Error: Firebase Admin SDK not initialized:', adminInitializationError);
-    return NextResponse.json({ message: 'Errore di configurazione del server.' }, { status: 500 });
+  if (adminInitializationError) {
+    console.error('API Error: Firebase Admin SDK initialization failed.', adminInitializationError);
+    return NextResponse.json({ message: `Errore di inizializzazione dell'Admin SDK: ${adminInitializationError}` }, { status: 500 });
+  }
+
+  if (!adminDb) {
+    console.error('API Error: Firestore service (adminDb) is not available.');
+    return NextResponse.json({ message: 'Errore di configurazione del server: servizio Firestore non disponibile.' }, { status: 500 });
+  }
+
+  if (!adminAuth) {
+    console.error('API Error: Authentication service (adminAuth) is not available.');
+    return NextResponse.json({ message: 'Errore di configurazione del server: servizio di autenticazione non disponibile.' }, { status: 500 });
   }
   
   try {
