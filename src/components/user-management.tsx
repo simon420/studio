@@ -23,24 +23,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Trash2, Users, AlertTriangle } from 'lucide-react';
+import { Loader2, Trash2, Users, AlertTriangle, User, Recycle, Trash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { useAuthStore } from '@/store/auth-store';
 
+type DeletionAction = 'delete' | 'reassign';
+
 export default function UserManagement() {
-  // The store now handles listening for users in real-time.
-  // The component just displays the data from the store.
-  const { users, isLoading, error, deleteUser } = useUserManagementStore();
-  const { uid: currentSuperAdminUid } = useAuthStore(); // Get current super-admin's UID
+  const { users, isLoading, error, deleteAdminUserAndManageProducts, deleteUser } = useUserManagementStore();
+  const { uid: currentSuperAdminUid } = useAuthStore();
   const { toast } = useToast();
   
   const [userToDelete, setUserToDelete] = React.useState<ClientUser | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
-
-  // No more useEffect to fetch users here. The store manages the real-time listener.
-
+  
   const openDeleteDialog = (user: ClientUser) => {
     if (user.uid === currentSuperAdminUid) {
       toast({
@@ -53,16 +51,22 @@ export default function UserManagement() {
     setUserToDelete(user);
   };
 
-  const confirmDelete = async () => {
+  const handleConfirmDeletion = async (action: DeletionAction | 'delete-user-only') => {
     if (!userToDelete) return;
     setIsDeleting(true);
+
     try {
-      await deleteUser(userToDelete.uid);
+      if (userToDelete.role === 'admin') {
+        await deleteAdminUserAndManageProducts(userToDelete.uid, action as DeletionAction);
+      } else {
+        await deleteUser(userToDelete.uid);
+      }
+      
       toast({
         title: 'Utente Eliminato',
         description: `L'utente ${userToDelete.email} è stato eliminato con successo.`,
       });
-      setUserToDelete(null);
+      setUserToDelete(null); // Close dialog on success
     } catch (error: any) {
       console.error("Errore eliminazione utente:", error);
       toast({
@@ -73,6 +77,70 @@ export default function UserManagement() {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const renderDialogContent = () => {
+    if (!userToDelete) return null;
+
+    if (userToDelete.role === 'admin') {
+      return (
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Gestisci Prodotti per {userToDelete.email}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Questo utente è un admin. Cosa vuoi fare con i prodotti che ha aggiunto?
+              Questa azione è irreversibile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4 text-sm text-muted-foreground">
+            Scegliendo di riassegnare, i prodotti diventeranno di tua proprietà. Scegliendo di eliminare,
+            sia l'utente che tutti i suoi prodotti verranno rimossi permanentemente.
+          </div>
+          <AlertDialogFooter className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => handleConfirmDeletion('reassign')}
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Recycle className="mr-2" />}
+              Riassegna Prodotti a te
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => handleConfirmDeletion('delete')}
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2"/>}
+              Elimina Utente e Prodotti
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      );
+    }
+
+    // Default dialog for 'user' role
+    return (
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Questa azione è irreversibile. Eliminerà permanentemente l'utente <span className="font-bold">{userToDelete.email}</span>.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={() => handleConfirmDeletion('delete-user-only')}
+            disabled={isDeleting}
+            className="bg-destructive hover:bg-destructive/90"
+          >
+            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Elimina Definitivamente
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    );
   };
 
   if (isLoading && users.length === 0) {
@@ -160,29 +228,9 @@ export default function UserManagement() {
         </Table>
       </ScrollArea>
 
-      {userToDelete && (
-        <AlertDialog open={!!userToDelete} onOpenChange={(isOpen) => !isOpen && setUserToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Sei assolutamente sicuro?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Questa azione è irreversibile. Eliminerà permanentemente l'utente <span className="font-bold">{userToDelete.email}</span> e tutti i suoi dati associati da Firebase Authentication e Firestore.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={confirmDelete}
-                disabled={isDeleting}
-                className="bg-destructive hover:bg-destructive/90"
-              >
-                {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Elimina Definitivamente
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      <AlertDialog open={!!userToDelete} onOpenChange={(isOpen) => !isOpen && setUserToDelete(null)}>
+        {renderDialogContent()}
+      </AlertDialog>
     </div>
   );
 }

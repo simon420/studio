@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminServices } from '@/lib/firebase-admin';
 import { UserRecord } from 'firebase-admin/auth';
+import type { Firestore } from 'firebase-admin/firestore';
 
 // Helper to filter and map user data to not expose sensitive info
 const mapUser = (user: UserRecord) => ({
@@ -35,7 +36,7 @@ export async function GET() {
 
 export async function DELETE(request: Request) {
   const { adminAuth, adminDb, error } = getAdminServices();
-
+  
   if (error || !adminAuth || !adminDb) {
     return NextResponse.json({ message: `Errore servizi Admin: ${error}` }, { status: 500 });
   }
@@ -49,8 +50,7 @@ export async function DELETE(request: Request) {
     // Delete from Firebase Authentication
     await adminAuth.deleteUser(uid);
     
-    // In a real app, you'd also delete from Firestore 'users' collection
-    // This requires the adminDb instance, using the Admin SDK syntax.
+    // Delete from Firestore 'users' collection in the default database
     const userDocRef = adminDb.collection('users').doc(uid);
     await userDocRef.delete();
     

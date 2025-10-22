@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { useAuthStore } from './auth-store';
 import { useNotificationStore } from './notification-store';
+import { useProductStore } from './product-store';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, Unsubscribe, DocumentChange, Timestamp } from 'firebase/firestore';
 import type { UserFirestoreData, Notification } from '@/lib/types';
@@ -23,6 +24,7 @@ interface UserManagementState {
   listenForUsers: () => void;
   cleanupUserListener: () => void;
   deleteUser: (uid: string) => Promise<void>;
+  deleteAdminUserAndManageProducts: (uid: string, productAction: 'reassign' | 'delete') => Promise<void>;
 }
 
 export const useUserManagementStore = create<UserManagementState>()(
@@ -89,6 +91,34 @@ export const useUserManagementStore = create<UserManagementState>()(
         userListenerAttachTime = null;
         set({ users: [], isLoading: true, error: null });
       },
+      
+      deleteAdminUserAndManageProducts: async (uid, productAction) => {
+        const { userRole, uid: superAdminUid, email: superAdminEmail } = useAuthStore.getState();
+        if (userRole !== 'super-admin' || !superAdminUid || !superAdminEmail) {
+          throw new Error('Solo i super-amministratori possono eseguire questa azione.');
+        }
+
+        const { products, superAdminUpdateProduct, superAdminDeleteProduct } = useProductStore.getState();
+        const adminProducts = products.filter(p => p.addedByUid === uid);
+        
+        // Step 1: Manage products
+        if (productAction === 'reassign') {
+            const updatedData = { addedByUid: superAdminUid, addedByEmail: superAdminEmail };
+            const promises = adminProducts.map(product => 
+                superAdminUpdateProduct(product.id, product.serverId!, updatedData)
+            );
+            await Promise.all(promises);
+        } else if (productAction === 'delete') {
+            const promises = adminProducts.map(product => 
+                superAdminDeleteProduct(product.id, product.serverId!)
+            );
+            await Promise.all(promises);
+        }
+
+        // Step 2: Delete user after products are managed
+        await get().deleteUser(uid);
+      },
+
 
       deleteUser: async (uid: string) => {
         const { userRole } = useAuthStore.getState();
