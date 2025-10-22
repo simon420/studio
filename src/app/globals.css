@@ -205,14 +205,9 @@ html {
   );
   background-size: 400% 400%;
   animation: loginGradientAnimation 25s ease infinite; /* Slightly slower animation */
-  z-index: 1;
+  z-index: 0;
 }
 
-/* Make sure card is above the background effect */
-.super-admin-page-container .card {
-  position: relative;
-  z-index: 2;
-}
 
 
 /* Main Application Page Styles */
@@ -297,6 +292,7 @@ html {
 }
 
     
+
 
 
 

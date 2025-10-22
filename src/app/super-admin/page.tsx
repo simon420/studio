@@ -55,45 +55,47 @@ export default function SuperAdminLoginPage() {
 
   return (
     <div className="super-admin-page-container flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-md rounded-xl">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 text-primary">
-            <Shield className="h-7 w-7" />
-          </div>
-          <CardTitle className="text-2xl font-bold">Accesso Super Admin</CardTitle>
-          <CardDescription className="text-card-foreground/80">
-            Questa area è riservata. Inserisci la password per continuare.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password Super Admin</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="password"
-                        placeholder="********"
-                        {...field}
-                        disabled={isLoggingIn}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoggingIn}>
-                {isLoggingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                {isLoggingIn ? 'Verifica...' : 'Accedi'}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+      <div className="relative z-10 w-full max-w-md">
+        <Card className="w-full shadow-2xl bg-card/80 backdrop-blur-md rounded-xl">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 text-primary">
+              <Shield className="h-7 w-7" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Accesso Super Admin</CardTitle>
+            <CardDescription className="text-card-foreground/80">
+              Questa area è riservata. Inserisci la password per continuare.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password Super Admin</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="password"
+                          placeholder="********"
+                          {...field}
+                          disabled={isLoggingIn}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isLoggingIn}>
+                  {isLoggingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {isLoggingIn ? 'Verifica...' : 'Accedi'}
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
