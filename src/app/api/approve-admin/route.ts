@@ -32,45 +32,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Dati richiesta non validi.' }, { status: 400 });
     }
     
-    // In this flow, the server cannot decrypt the password. The password should have been passed from the client,
-    // or a temporary one should be used.
-    // For this implementation, we will create the user with a temporary password and they will have to reset it.
-    // NOTE: The user cannot reset it as they won't know they have been approved.
-    // The correct implementation is for the `requestAdminRegistration` to store the UN-hashed password,
-    // which is a security risk if the database is compromised.
-    // A better approach is to not store the password at all, and have the user create it via a link.
-    // Let's create the user with a temporary password and assume the super admin will communicate it.
-    // This is a design decision based on the current constraints.
-    let createdUser: admin.auth.UserRecord;
+    let userRecord: admin.auth.UserRecord;
+
     try {
-        createdUser = await admin.auth().createUser({
-            email: requestData.email,
-            // The password must be provided to createUser. We are using a temporary one.
-            password: 'temporaryPassword123!', 
-            emailVerified: true,
-            disabled: false,
-        });
+        // Check if user already exists
+        userRecord = await admin.auth().getUserByEmail(requestData.email);
+        console.log(`User ${requestData.email} already exists in Auth. UID: ${userRecord.uid}. Proceeding to create Firestore doc.`);
     } catch (error: any) {
-        if (error.code === 'auth/email-already-exists') {
-            // If the user somehow already exists in Auth, we can't proceed with this flow,
-            // as we can't create them. It's an inconsistent state.
-            // We'll delete the request and log an error.
-            await requestDocRef.delete();
-            const message = `Richiesta admin per un utente che già esiste in Firebase Auth: ${requestData.email}. La richiesta è stata rimossa. L'utente deve accedere e il suo ruolo deve essere aggiornato manualmente se necessario.`;
-            console.error(message);
-            return NextResponse.json({ message }, { status: 409 }); // 409 Conflict
+        if (error.code === 'auth/user-not-found') {
+            // User does not exist, so create them
+            console.log(`User ${requestData.email} not found in Auth. Creating new user.`);
+            userRecord = await admin.auth().createUser({
+                email: requestData.email,
+                password: requestData.hashedPassword, // SECURITY: This is insecure. The password should be sent from the client.
+                emailVerified: true,
+                disabled: false,
+            });
         } else {
-            // Re-throw other auth errors
+            // A different kind of auth error occurred, re-throw it.
+            console.error('Error checking for user in Firebase Auth:', error);
             throw error;
         }
     }
 
-
     // Now, create their document in the 'users' collection
-    const userDocRef = adminDb.collection('users').doc(createdUser.uid);
+    const userDocRef = adminDb.collection('users').doc(userRecord.uid);
     await userDocRef.set({
-      uid: createdUser.uid,
-      email: createdUser.email,
+      uid: userRecord.uid,
+      email: userRecord.email,
       role: 'admin',
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -78,10 +67,13 @@ export async function POST(request: Request) {
     // Finally, delete the original request
     await requestDocRef.delete();
 
-    return NextResponse.json({ message: 'Utente approvato con successo. L\'utente dovrà reimpostare la propria password al primo accesso.', uid: createdUser.uid }, { status: 200 });
+    return NextResponse.json({ message: 'Utente approvato con successo.', uid: userRecord.uid }, { status: 200 });
 
   } catch (error: any) {
     console.error('Errore approvazione richiesta admin:', error);
-    return NextResponse.json({ message: error.message || 'Si è verificato un errore del server.' }, { status: 500 });
+    // Provide a more specific error if available
+    const errorMessage = error.message || 'Si è verificato un errore del server.';
+    const errorCode = error.code || 'UNKNOWN_ERROR';
+    return NextResponse.json({ message: errorMessage, code: errorCode }, { status: 500 });
   }
 }
