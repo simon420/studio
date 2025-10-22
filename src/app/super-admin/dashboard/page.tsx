@@ -7,10 +7,13 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AdminRequests from '@/components/admin-requests';
-import { Loader2, LogOut, ShieldCheck, ShieldAlert, Package, UserPlus } from 'lucide-react';
+import { Loader2, LogOut, ShieldCheck, ShieldAlert, Package, UserPlus, Users, PackagePlus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import SuperAdminProductsList from '@/components/super-admin-products-list'; // Import the new component
+import SuperAdminProductsList from '@/components/super-admin-products-list'; 
 import ProductInputForm from '@/components/product-input-form';
+import UserManagement from '@/components/user-management';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
@@ -19,7 +22,6 @@ export default function SuperAdminDashboardPage() {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   React.useEffect(() => {
-    // If auth is not loading and the user is not a super-admin, redirect them.
     if (!isLoading && (!isAuthenticated || userRole !== 'super-admin')) {
       router.replace('/super-admin');
     }
@@ -33,7 +35,6 @@ export default function SuperAdminDashboardPage() {
         title: 'Disconnesso',
         description: 'Sei stato disconnesso con successo.',
       });
-      // The useEffect will handle redirecting to the login page after state change.
     } catch (error: any) {
       console.error('Logout failed:', error);
       toast({
@@ -46,8 +47,7 @@ export default function SuperAdminDashboardPage() {
     }
   };
 
-  // Show a loading screen while authentication status is being determined.
-  if (isLoading || isLoggingOut) {
+  if (isLoading || (isLoggingOut && !isLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -57,9 +57,7 @@ export default function SuperAdminDashboardPage() {
       </div>
     );
   }
-
-  // If after loading, the user is still not a super-admin, show nothing or a redirecting message.
-  // The useEffect handles the actual redirect logic.
+  
   if (!isAuthenticated || userRole !== 'super-admin') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -69,7 +67,6 @@ export default function SuperAdminDashboardPage() {
     );
   }
 
-  // Render the dashboard for the authenticated super-admin.
   return (
     <div className="main-app-container">
       <div className="main-app-content">
@@ -88,47 +85,72 @@ export default function SuperAdminDashboardPage() {
             </Button>
           </header>
 
-          <main className="space-y-8">
-             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-1 space-y-8">
-                  <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center"><UserPlus className="mr-2"/> Richieste Admin</CardTitle>
-                        <CardDescription>
-                          Approva o rifiuta le richieste per i nuovi account admin.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <AdminRequests />
-                      </CardContent>
-                  </Card>
-                   <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center"><Package className="mr-2"/> Aggiungi Prodotto</CardTitle>
-                         <CardDescription>
-                          Aggiungi un nuovo prodotto al sistema da qui.
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <ProductInputForm />
-                      </CardContent>
-                   </Card>
-                </div>
+          <main>
+            <Tabs defaultValue="products" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="products"><Package className="mr-2" /> Gestione Prodotti</TabsTrigger>
+                <TabsTrigger value="users"><Users className="mr-2" /> Gestione Utenti</TabsTrigger>
+                <TabsTrigger value="add-product"><PackagePlus className="mr-2" /> Aggiungi Prodotto</TabsTrigger>
+                <TabsTrigger value="admin-requests"><UserPlus className="mr-2" /> Richieste Admin</TabsTrigger>
+              </TabsList>
 
-                <div className="lg:col-span-2">
-                  <Card>
+              <TabsContent value="products">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Gestione Prodotti Totale</CardTitle>
+                    <CardDescription>
+                      Visualizza, cerca, modifica ed elimina qualsiasi prodotto nel sistema.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <SuperAdminProductsList />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="users">
+                <Card>
                     <CardHeader>
-                      <CardTitle>Gestione Prodotti Totale</CardTitle>
+                      <CardTitle>Gestione Utenti</CardTitle>
                       <CardDescription>
-                        Visualizza, modifica ed elimina qualsiasi prodotto nel sistema.
+                        Visualizza ed elimina gli utenti registrati nel sistema.
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <SuperAdminProductsList />
+                      <UserManagement />
+                    </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="add-product">
+                <Card>
+                    <CardHeader>
+                      <CardTitle>Aggiungi Nuovo Prodotto</CardTitle>
+                        <CardDescription>
+                        Aggiungi un nuovo prodotto al sistema da qui. Verrà assegnato allo shard corretto in base al codice.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <ProductInputForm />
                     </CardContent>
                   </Card>
-                </div>
-              </div>
+              </TabsContent>
+
+              <TabsContent value="admin-requests">
+                <Card>
+                    <CardHeader>
+                      <CardTitle>Richieste di Registrazione Admin</CardTitle>
+                      <CardDescription>
+                        Approva o rifiuta le richieste per i nuovi account di tipo "admin".
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <AdminRequests />
+                    </CardContent>
+                </Card>
+              </TabsContent>
+
+            </Tabs>
           </main>
         </div>
       </div>
