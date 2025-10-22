@@ -18,28 +18,34 @@ export function getAdminServices() {
     }
   }
 
-  // IMPORTANTE: la chiave di servizio viene caricata in modo sicuro da una variabile d'ambiente.
-  // Questa variabile è gestita tramite il file .env.local.
-  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-
-  if (!serviceAccountEnv || serviceAccountEnv === 'INCOLLA QUI LA TUA CHIAVE DI SERVIZIO JSON COMPLETA') {
-    const error = 'CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY non è impostata nel file .env.local.';
-    console.error(error);
-    return { adminDb: null, adminAuth: null, error };
-  }
-
+  // Costruisce le credenziali dalle variabili d'ambiente individuali.
   try {
-    const serviceAccount = JSON.parse(serviceAccountEnv);
+    // Controlla che le variabili d'ambiente essenziali esistano
+    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
+        const error = 'CRITICAL: Mancano variabili d\'ambiente Firebase essenziali (PROJECT_ID, PRIVATE_KEY, CLIENT_EMAIL).';
+        console.error(error);
+        return { adminDb: null, adminAuth: null, error };
+    }
 
-    // Inizializza con il formato corretto della chiave privata
+    const serviceAccount = {
+      type: process.env.FIREBASE_TYPE,
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
+      private_key: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      client_id: process.env.FIREBASE_CLIENT_ID,
+      auth_uri: process.env.FIREBASE_AUTH_URI,
+      token_uri: process.env.FIREBASE_TOKEN_URI,
+      auth_provider_x509_cert_url: process.env.FIREBASE_AUTH_PROVIDER_CERT_URL,
+      client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
+    };
+    
+    // Inizializza l'app con le credenziali certificate.
     admin.initializeApp({
-      credential: admin.credential.cert({
-        ...serviceAccount,
-        private_key: serviceAccount.private_key.replace(/\\n/g, '\n'),
-      }),
+      credential: admin.credential.cert(serviceAccount)
     });
     
-    console.log('Firebase Admin SDK initialized successfully from .env.local.');
+    console.log('Firebase Admin SDK initialized successfully from environment variables.');
     
     return {
       adminDb: admin.firestore(),
@@ -47,12 +53,7 @@ export function getAdminServices() {
       error: null,
     };
   } catch (e: any) {
-    let error;
-    if (e instanceof SyntaxError) {
-      error = `Errore nel parsing di FIREBASE_SERVICE_ACCOUNT_KEY come JSON: ${e.message}. Assicurati che sia una stringa JSON valida.`;
-    } else {
-      error = `Errore nell'inizializzazione di Firebase Admin SDK: ${e.message}`;
-    }
+    const error = `Errore nell'inizializzazione di Firebase Admin SDK: ${e.message}`;
     console.error(error);
     return { adminDb: null, adminAuth: null, error };
   }
