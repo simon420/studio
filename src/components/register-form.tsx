@@ -76,11 +76,7 @@ export default function RegisterForm() {
                 title: 'Richiesta Inviata',
                 description: 'La tua richiesta di registrazione come admin è stata inviata per approvazione.',
             });
-            // Send notification to super-admin about the new request
-            addNotification({
-                type: 'admin_request',
-                message: `Nuova richiesta admin da: ${values.email}`,
-            });
+            // The notification is now handled by the real-time listener in admin-store.
             router.push('/login');
         } else {
             await register(values.email, values.password, values.role);

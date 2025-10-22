@@ -18,22 +18,19 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ScrollArea } from './ui/scroll-area';
-import { useNotificationStore } from '@/store/notification-store';
 
 export default function AdminRequests() {
   const {
     pendingRequests,
     isLoading,
-    fetchRequests,
     approveAdminRequest,
     declineAdminRequest,
   } = useAdminStore();
   const { toast } = useToast();
   const [processingId, setProcessingId] = React.useState<string | null>(null);
 
-  React.useEffect(() => {
-    fetchRequests();
-  }, [fetchRequests]);
+  // The listener is now handled in the store, so this component just displays the data.
+  // The useEffect for fetching is no longer needed here.
 
   const handleApprove = async (requestId: string, email: string | null) => {
     setProcessingId(requestId);
@@ -43,7 +40,6 @@ export default function AdminRequests() {
         title: 'Richiesta Approvata',
         description: `L'utente ${email} è ora un amministratore.`,
       });
-      // Notification is removed from here as it's not useful for the person performing the action
     } catch (error: any) {
       console.error('Errore approvazione richiesta:', error);
       toast({
@@ -81,7 +77,7 @@ export default function AdminRequests() {
     return (
       <div className="flex items-center justify-center h-[150px]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Caricamento richieste...</p>
+        <p className="ml-2 text-muted-foreground">In attesa di richieste...</p>
       </div>
     );
   }
