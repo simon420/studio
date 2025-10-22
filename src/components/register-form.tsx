@@ -1,3 +1,4 @@
+
 // src/components/register-form.tsx
 'use client';
 
@@ -67,39 +68,27 @@ export default function RegisterForm() {
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsSubmittingForm(true);
     form.clearErrors();
+    let errorMessage = 'Si è verificato un errore imprevisto.';
 
-    if (values.role === 'admin') {
-      try {
+    try {
+      if (values.role === 'admin') {
         await requestAdminRegistration(values.email, values.password);
         toast({
           title: 'Richiesta Inviata',
           description: "La tua richiesta di registrazione come amministratore è stata inviata per l'approvazione.",
         });
         form.reset();
-      } catch (error: any) {
+      } else { // role === 'user'
+        await register(values.email, values.password, values.role);
+        // onAuthStateChanged in store handles setting isAuthenticated.
+        // useEffect above handles redirect.
         toast({
-          title: 'Invio Richiesta Fallito',
-          description: error.message || "Impossibile inviare la richiesta di registrazione.",
-          variant: 'destructive',
+          title: 'Registrazione Riuscita',
+          description: 'Il tuo account è stato creato. Hai effettuato l\'accesso.',
         });
-      } finally {
-        setIsSubmittingForm(false);
       }
-      return;
-    }
-
-
-    try {
-      await register(values.email, values.password, values.role);
-      // onAuthStateChanged in store handles setting isAuthenticated.
-      // useEffect above handles redirect.
-      toast({
-        title: 'Registrazione Riuscita',
-        description: 'Il tuo account è stato creato. Hai effettuato l\'accesso.',
-      });
     } catch (error: any) {
       console.error('Registration form error:', error);
-      let errorMessage = 'Si è verificato un errore imprevisto.';
       if (error.code) {
         switch (error.code) {
           case 'auth/email-already-in-use':
@@ -218,3 +207,5 @@ export default function RegisterForm() {
     </Form>
   );
 }
+
+    

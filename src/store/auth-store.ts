@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { persist, createJSONStorage, devtools } from 'zustand/middleware';
 import type { User as FirebaseUser } from 'firebase/auth';
@@ -58,7 +59,15 @@ export const useAuthStore = create<AuthState>()(
             throw new Error("La registrazione degli amministratori deve passare attraverso la richiesta.");
           }
           set({ isLoading: true });
+
           try {
+            // SECURITY FIX: Check if an admin request for this email already exists
+            const adminRequestQuery = query(collection(db, 'adminRequests'), where('email', '==', email), where('status', '==', 'pending'));
+            const existingAdminRequests = await getDocs(adminRequestQuery);
+            if (!existingAdminRequests.empty) {
+                throw new Error('Esiste già una richiesta di registrazione come admin per questa email. Attendi l\'approvazione.');
+            }
+
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const firebaseUser = userCredential.user;
 
@@ -82,14 +91,20 @@ export const useAuthStore = create<AuthState>()(
         requestAdminRegistration: async (email, password) => {
           set({ isLoading: true });
           try {
-            // Check if a request for this email already exists
-            const q = query(collection(db, 'adminRequests'), where('email', '==', email), where('status', '==', 'pending'));
-            const existingRequests = await getDocs(q);
+            // SECURITY FIX: Check if a user with this email already exists in the 'users' collection
+            const userQuery = query(collection(db, 'users'), where('email', '==', email));
+            const existingUsers = await getDocs(userQuery);
+            if (!existingUsers.empty) {
+                throw new Error('Un utente con questa email è già registrato.');
+            }
+
+            // Check if a pending request for this email already exists
+            const requestQuery = query(collection(db, 'adminRequests'), where('email', '==', email), where('status', '==', 'pending'));
+            const existingRequests = await getDocs(requestQuery);
             if (!existingRequests.empty) {
                 throw new Error('Una richiesta per questa email è già in attesa di approvazione.');
             }
             
-            // We don't create the user. We just store the request.
             const requestRef = collection(db, 'adminRequests');
             await addDoc(requestRef, {
               email: email,
@@ -97,7 +112,7 @@ export const useAuthStore = create<AuthState>()(
               status: 'pending',
               requestedAt: serverTimestamp(),
             });
-            // Don't log the user in
+            
              set({ isLoading: false });
           } catch(error: any) {
             set({ isLoading: false });
@@ -127,8 +142,6 @@ export const useAuthStore = create<AuthState>()(
               return userData.role;
             } else {
               console.warn('Documento utente non trovato in Firestore per UID:', uid, "- imposto ruolo di default 'user'.");
-              // This can happen if registration succeeded for auth but Firestore write failed/is pending
-              // Or if user was created via Firebase console without a corresponding Firestore doc.
               return 'user'; 
             }
           } catch (error) {
@@ -139,9 +152,6 @@ export const useAuthStore = create<AuthState>()(
         
         _updateAuthData: async (fbUser, roleOverride) => {
           if (fbUser) {
-            // Explicitly set isLoading to true when starting to process a user,
-            // especially since role fetching is async.
-            // This handles cases where _updateAuthData might be called when isLoading was false.
             set(state => ({ ...state, isLoading: true }));
             try {
               const role = roleOverride || (await get()._fetchUserRole(fbUser.uid));
@@ -154,8 +164,6 @@ export const useAuthStore = create<AuthState>()(
                 isLoading: false,
               });
             } catch (error) {
-              // This catch is primarily for unexpected errors in _fetchUserRole
-              // though _fetchUserRole itself has a catch and returns a default.
               console.error("Errore durante il recupero del ruolo in _updateAuthData:", error);
               set({
                 firebaseUser: fbUser,
@@ -175,28 +183,25 @@ export const useAuthStore = create<AuthState>()(
         name: 'auth-firebase-storage',
         storage: createJSONStorage(() => localStorage),
         partialize: (state) => ({
-          // Only persist minimal, non-sensitive data.
         }),
         onRehydrateStorage: () => {
           return (state) => {
-            if (state) state.isLoading = true; // Ensure loading on rehydration
+            if (state) state.isLoading = true; 
           };
         },
       }
     ),
-    { name: "AuthStore" } // Name for devtools
+    { name: "AuthStore" } 
   )
 );
 
-// Initialize Firebase onAuthStateChanged listener
 if (typeof window !== 'undefined' && auth) {
-  onAuthStateChanged(auth, async (user) => { // Make the listener callback async
-    // Await _updateAuthData to ensure all async operations within it (like role fetching) complete
-    // before subsequent dependent logic in components might run.
+  onAuthStateChanged(auth, async (user) => { 
     await useAuthStore.getState()._updateAuthData(user);
   }, (error) => {
     console.error("onAuthStateChanged error:", error);
-    // Ensure state is reset and isLoading is false even on listener error
     useAuthStore.getState()._updateAuthData(null); 
   });
 }
+
+    
