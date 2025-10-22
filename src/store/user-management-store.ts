@@ -5,7 +5,7 @@ import { useAuthStore } from './auth-store';
 import { useNotificationStore } from './notification-store';
 import { db } from '@/lib/firebase';
 import { collection, onSnapshot, query, Unsubscribe, DocumentChange, Timestamp } from 'firebase/firestore';
-import type { UserFirestoreData } from '@/lib/types';
+import type { UserFirestoreData, Notification } from '@/lib/types';
 
 
 // We can't use the full UserRecord type on the client, so define a client-safe version
@@ -54,9 +54,17 @@ export const useUserManagementStore = create<UserManagementState>()(
                   
                   // Notify only for new users that were added after the listener was attached
                   if (change.type === "added" && userListenerAttachTime && userTimestamp > userListenerAttachTime) {
+                      let notificationType: Notification['type'] = 'user_registered';
+                      let message = `Nuovo utente registrato: ${userData.email}`;
+
+                      if (userData.role === 'admin') {
+                        notificationType = 'user_approved';
+                        message = `L'utente admin ${userData.email} è stato approvato.`;
+                      }
+                      
                       addNotification({
-                          type: 'user_registered',
-                          message: `Nuovo utente registrato: ${userData.email}`,
+                          type: notificationType,
+                          message: message,
                       });
                   }
               });
