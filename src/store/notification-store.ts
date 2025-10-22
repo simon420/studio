@@ -10,6 +10,7 @@ interface NotificationState {
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markAsRead: (id: string) => void;
   markAllAsRead: () => void;
+  deleteNotification: (id: string) => void;
   clearAllNotifications: () => void;
 }
 
@@ -56,6 +57,21 @@ export const useNotificationStore = create<NotificationState>()(
               unreadCount: 0,
             };
           });
+        },
+        
+        deleteNotification: (id: string) => {
+            set((state) => {
+                const notificationToDelete = state.notifications.find(n => n.id === id);
+                if (!notificationToDelete) return state;
+
+                const newNotifications = state.notifications.filter(n => n.id !== id);
+                const newUnreadCount = notificationToDelete.read ? state.unreadCount : state.unreadCount - 1;
+
+                return {
+                    notifications: newNotifications,
+                    unreadCount: Math.max(0, newUnreadCount)
+                };
+            });
         },
 
         clearAllNotifications: () => {

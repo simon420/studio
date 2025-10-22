@@ -8,13 +8,14 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Bell, PackagePlus, Edit3, Trash, UserPlus, ShieldCheck } from 'lucide-react';
+import { Bell, PackagePlus, Edit3, Trash, UserPlus, ShieldCheck, X, Trash2 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import type { Notification } from '@/lib/types';
+import { Separator } from './ui/separator';
 
 function NotificationIcon({ type }: { type: Notification['type'] }) {
     switch (type) {
@@ -36,7 +37,7 @@ function NotificationIcon({ type }: { type: Notification['type'] }) {
 
 
 export default function NotificationCenter() {
-  const { notifications, unreadCount, markAllAsRead, isLoaded } = useNotificationStore();
+  const { notifications, unreadCount, markAllAsRead, isLoaded, deleteNotification, clearAllNotifications } = useNotificationStore();
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -54,6 +55,16 @@ export default function NotificationCenter() {
   const sortedNotifications = React.useMemo(() => {
     return [...notifications].sort((a, b) => b.timestamp - a.timestamp);
   }, [notifications]);
+  
+  const handleDelete = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Prevent the popover from closing
+    deleteNotification(id);
+  }
+
+  const handleClearAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    clearAllNotifications();
+  }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -72,8 +83,14 @@ export default function NotificationCenter() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0">
-        <div className="p-4 border-b">
+        <div className="p-4 border-b flex items-center justify-between">
           <h3 className="text-lg font-medium">Notifiche</h3>
+           {sortedNotifications.length > 0 && (
+             <Button variant="ghost" size="sm" onClick={handleClearAll}>
+               <Trash2 className="h-4 w-4 mr-1" />
+               Svuota
+             </Button>
+           )}
         </div>
         <ScrollArea className="h-96">
           {isLoaded && sortedNotifications.length > 0 ? (
@@ -82,7 +99,7 @@ export default function NotificationCenter() {
                 <div
                   key={notif.id}
                   className={cn(
-                    'flex items-start gap-3 p-4 transition-colors',
+                    'group flex items-start gap-3 p-4 transition-colors relative',
                     !notif.read && 'bg-primary/5'
                   )}
                 >
@@ -90,11 +107,20 @@ export default function NotificationCenter() {
                         <NotificationIcon type={notif.type} />
                     </div>
                     <div className="flex-1">
-                        <p className="text-sm">{notif.message}</p>
+                        <p className="text-sm pr-4">{notif.message}</p>
                         <p className="text-xs text-muted-foreground">
                             {formatDistanceToNow(notif.timestamp, { addSuffix: true, locale: it })}
                         </p>
                     </div>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 h-6 w-6 opacity-0 group-hover:opacity-100"
+                        onClick={(e) => handleDelete(e, notif.id)}
+                    >
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Elimina notifica</span>
+                    </Button>
                 </div>
               ))}
             </div>
