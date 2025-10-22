@@ -2,7 +2,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminServices } from '@/lib/firebase-admin';
 import { UserRecord } from 'firebase-admin/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
 
 // Helper to filter and map user data to not expose sensitive info
 const mapUser = (user: UserRecord) => ({
@@ -51,9 +50,9 @@ export async function DELETE(request: Request) {
     await adminAuth.deleteUser(uid);
     
     // In a real app, you'd also delete from Firestore 'users' collection
-    // This requires the adminDb instance.
-    const userDocRef = doc(adminDb, 'users', uid);
-    await deleteDoc(userDocRef);
+    // This requires the adminDb instance, using the Admin SDK syntax.
+    const userDocRef = adminDb.collection('users').doc(uid);
+    await userDocRef.delete();
     
     return NextResponse.json({ message: `Utente con UID: ${uid} eliminato con successo.` }, { status: 200 });
 
