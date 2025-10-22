@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, ShieldKeyhole } from 'lucide-react';
+import { Loader2, Shield } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
@@ -58,7 +58,7 @@ export default function SuperAdminLoginPage() {
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-md rounded-xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 text-primary">
-            <ShieldKeyhole className="h-7 w-7" />
+            <Shield className="h-7 w-7" />
           </div>
           <CardTitle className="text-2xl font-bold">Accesso Super Admin</CardTitle>
           <CardDescription className="text-card-foreground/80">
