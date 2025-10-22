@@ -3,73 +3,81 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, query, where, deleteDoc } from 'firebase/firestore';
-import type { UserFirestoreData } from '@/lib/types';
+import { collection, getDocs, doc, deleteDoc, query, where, orderBy, updateDoc } from 'firebase/firestore';
+import type { AdminRequest } from '@/lib/types';
 
 interface AdminState {
-  // Requests are now just users with the 'pending' role
-  pendingUsers: UserFirestoreData[];
+  pendingRequests: AdminRequest[];
   isLoading: boolean;
-  fetchPendingUsers: () => Promise<void>;
-  approveAdminRequest: (uid: string) => Promise<void>;
-  declineAdminRequest: (uid: string) => Promise<void>;
+  fetchRequests: () => Promise<void>;
+  approveAdminRequest: (requestId: string) => Promise<void>;
+  declineAdminRequest: (requestId: string) => Promise<void>;
 }
 
-// Function to call our new secure API route
-async function deleteUserApiCall(uid: string): Promise<void> {
-    const response = await fetch('/api/delete-user', {
+// API call to approve request (create user on server)
+async function approveRequestApiCall(requestId: string): Promise<void> {
+    const response = await fetch('/api/approve-admin', {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ uid }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId }),
     });
 
     if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || 'Eliminazione utente fallita.');
+        throw new Error(errorData.message || 'Approvazione richiesta fallita.');
     }
 }
+
 
 export const useAdminStore = create<AdminState>()(
   devtools(
     (set) => ({
-      pendingUsers: [],
+      pendingRequests: [],
       isLoading: true,
 
-      fetchPendingUsers: async () => {
+      fetchRequests: async () => {
         set({ isLoading: true });
         try {
-          const q = query(collection(db, 'users'), where('role', '==', 'pending'));
+          const q = query(
+            collection(db, 'adminRequests'), 
+            where('status', '==', 'pending'),
+            orderBy('requestedAt', 'desc')
+          );
           const querySnapshot = await getDocs(q);
-          const usersData = querySnapshot.docs.map(docSnap => docSnap.data() as UserFirestoreData);
-          set({ pendingUsers: usersData, isLoading: false });
+          const requestsData = querySnapshot.docs.map(docSnap => ({
+              id: docSnap.id,
+              ...docSnap.data()
+          } as AdminRequest));
+          set({ pendingRequests: requestsData, isLoading: false });
         } catch (error) {
-          console.error("Errore nel recupero degli utenti in attesa:", error);
+          console.error("Errore nel recupero delle richieste admin:", error);
           set({ isLoading: false });
         }
       },
 
-      approveAdminRequest: async (uid: string) => {
-        const userDocRef = doc(db, 'users', uid);
-        // Change role from 'pending' to 'admin'
-        await updateDoc(userDocRef, { role: 'admin' });
+      approveAdminRequest: async (requestId: string) => {
+        // Call the secure API route to handle user creation and document updates
+        await approveRequestApiCall(requestId);
 
+        // Update the local store to remove the approved request
         set(state => ({
-          pendingUsers: state.pendingUsers.filter(user => user.uid !== uid)
+          pendingRequests: state.pendingRequests.filter(req => req.id !== requestId)
         }));
       },
 
-      declineAdminRequest: async (uid: string) => {
-        // 1. Delete the user from Firebase Authentication via the secure API route
-        await deleteUserApiCall(uid);
+      declineAdminRequest: async (requestId: string) => {
+        // Simply delete the request document from Firestore
+        const requestDocRef = doc(db, 'adminRequests', requestId);
+        await deleteDoc(requestDocRef);
 
-        // 2. Delete the user's document from Firestore
-        const userDocRef = doc(db, 'users', uid);
-        await deleteDoc(userDocRef);
-
-        // 3. Update the local store
+        // Update the local store
         set(state => ({
-          pendingUsers: state.pendingUsers.filter(user => user.uid !== uid),
+          pendingRequests: state.pendingRequests.filter(req => req.id !== requestId),
         }));
       },
+    }),
+    { name: 'AdminStore' }
+  )
+);
+
+    

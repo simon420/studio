@@ -21,9 +21,9 @@ import { ScrollArea } from './ui/scroll-area';
 
 export default function AdminRequests() {
   const {
-    pendingUsers,
+    pendingRequests,
     isLoading,
-    fetchPendingUsers,
+    fetchRequests,
     approveAdminRequest,
     declineAdminRequest,
   } = useAdminStore();
@@ -31,13 +31,13 @@ export default function AdminRequests() {
   const [processingId, setProcessingId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    fetchPendingUsers();
-  }, [fetchPendingUsers]);
+    fetchRequests();
+  }, [fetchRequests]);
 
-  const handleApprove = async (uid: string, email: string | null) => {
-    setProcessingId(uid);
+  const handleApprove = async (requestId: string, email: string | null) => {
+    setProcessingId(requestId);
     try {
-      await approveAdminRequest(uid);
+      await approveAdminRequest(requestId);
       toast({
         title: 'Richiesta Approvata',
         description: `L'utente ${email} è ora un amministratore.`,
@@ -54,20 +54,20 @@ export default function AdminRequests() {
     }
   };
 
-  const handleDecline = async (uid: string, email: string | null) => {
-    setProcessingId(uid);
+  const handleDecline = async (requestId: string, email: string | null) => {
+    setProcessingId(requestId);
     try {
-      await declineAdminRequest(uid);
+      await declineAdminRequest(requestId);
       toast({
         title: 'Richiesta Rifiutata',
-        description: `La richiesta di ${email} è stata rifiutata e l'utente eliminato.`,
+        description: `La richiesta di ${email} è stata rifiutata.`,
         variant: 'destructive',
       });
     } catch (error: any) {
       console.error('Errore rifiuto richiesta:', error);
       toast({
         title: 'Rifiuto Fallito',
-        description: error.message || 'Impossibile rifiutare la richiesta e eliminare l\'utente.',
+        description: error.message || 'Impossibile rifiutare la richiesta.',
         variant: 'destructive',
       });
     } finally {
@@ -75,7 +75,7 @@ export default function AdminRequests() {
     }
   };
 
-  if (isLoading && pendingUsers.length === 0) {
+  if (isLoading && pendingRequests.length === 0) {
     return (
       <div className="flex items-center justify-center h-[150px]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -88,7 +88,7 @@ export default function AdminRequests() {
     <ScrollArea className="h-[260px] rounded-md border">
         <Table>
             <TableCaption>
-                {pendingUsers.length > 0 ? `${pendingUsers.length} richiesta(e) in attesa.` : 'Nessuna richiesta di amministrazione in attesa.'}
+                {pendingRequests.length > 0 ? `${pendingRequests.length} richiesta(e) in attesa.` : 'Nessuna richiesta di amministrazione in attesa.'}
             </TableCaption>
             <TableHeader className="sticky top-0 bg-secondary z-10">
                 <TableRow>
@@ -98,7 +98,7 @@ export default function AdminRequests() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {pendingUsers.length === 0 ? (
+                {pendingRequests.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={3} className="h-24 text-center">
                         <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -108,34 +108,43 @@ export default function AdminRequests() {
                     </TableCell>
                 </TableRow>
                 ) : (
-                pendingUsers.map((user) => (
-                    <TableRow key={user.uid}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
+                pendingRequests.map((request) => (
+                    <TableRow key={request.id}>
+                    <TableCell className="font-medium">{request.email}</TableCell>
                     <TableCell>
-                        {user.createdAt?.toDate ? formatDistanceToNow(user.createdAt.toDate(), { addSuffix: true, locale: it }) : 'N/A'}
+                        {request.requestedAt?.toDate ? formatDistanceToNow(request.requestedAt.toDate(), { addSuffix: true, locale: it }) : 'N/A'}
                     </TableCell>
                     <TableCell className="text-center">
                         <div className="flex justify-center space-x-2">
                         <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleApprove(user.uid, user.email)}
+                            onClick={() => handleApprove(request.id, request.email)}
                             disabled={!!processingId}
                             aria-label="Approva Richiesta"
                         >
-                            {processingId === user.uid ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
+                            {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserCheck className="h-4 w-4" />}
                             <span className="ml-2 hidden sm:inline">Approva</span>
                         </Button>
                         <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => handleDecline(user.uid, user.email)}
+                            onClick={() => handleDecline(request.id, request.email)}
                             disabled={!!processingId}
                             aria-label="Rifiuta Richiesta"
                         >
-                            {processingId === user.uid ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
+                            {processingId === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
                              <span className="ml-2 hidden sm:inline">Rifiuta</span>
                         </Button>
                         </div>
                     </TableCell>
-                    </TableRow
+                    </TableRow>
+                ))
+            )}
+            </TableBody>
+        </Table>
+    </ScrollArea>
+  );
+}
+
+    

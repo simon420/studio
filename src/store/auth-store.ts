@@ -9,7 +9,7 @@ import {
   signOut,
   onAuthStateChanged,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { UserRole, UserFirestoreData } from '@/lib/types';
 
@@ -36,6 +36,22 @@ const initialAuthState = {
   isAuthenticated: false,
   isLoading: true, // Start in loading state until first auth check
 };
+
+// API call to encrypt password on the server
+async function encryptPassword(password: string): Promise<string> {
+    const response = await fetch('/api/encrypt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+    });
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Password encryption failed.');
+    }
+    const { hashedPassword } = await response.json();
+    return hashedPassword;
+}
+
 
 export const useAuthStore = create<AuthState>()(
   devtools( 
@@ -72,11 +88,12 @@ export const useAuthStore = create<AuthState>()(
 
         try {
           // SECURITY FIX: Check if an admin request for this email already exists
-          const adminRequestQuery = query(collection(db, 'adminRequests'), where('email', '==', email));
-          const existingAdminRequests = await getDocs(adminRequestQuery);
-          if (!existingAdminRequests.empty) {
-            throw new Error('Esiste già una richiesta di registrazione come admin per questa email. Attendi l\'approvazione o contatta il supporto.');
-          }
+           const adminRequestQuery = query(collection(db, 'adminRequests'), where('email', '==', email), where('status', '==', 'pending'));
+           const existingAdminRequests = await getDocs(adminRequestQuery);
+           if (!existingAdminRequests.empty) {
+               throw new Error('Esiste già una richiesta di registrazione come admin per questa email. Attendi l\'approvazione o contatta il supporto.');
+           }
+
 
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
@@ -96,40 +113,42 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      requestAdminRegistration: async (email, password) => {
-        set({ isLoading: true });
-        try {
-          // Check if a user with this email already exists in Firestore users collection
-          const userQuery = query(collection(db, 'users'), where('email', '==', email));
-          const existingUsers = await getDocs(userQuery);
-          if (!existingUsers.empty) {
-            throw new Error('Un utente con questa email è già registrato.');
-          }
+     requestAdminRegistration: async (email, password) => {
+         set({ isLoading: true });
+         try {
+             // 1. Check if user already exists in Auth or Firestore 'users'
+             const userQuery = query(collection(db, 'users'), where('email', '==', email));
+             const existingUsers = await getDocs(userQuery);
+             if (!existingUsers.empty) {
+                 throw new Error('Un utente con questa email è già registrato.');
+             }
 
-          // Create the user in Firebase Auth first
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const firebaseUser = userCredential.user;
-          
-          // Now, create their user document in Firestore with 'pending' role
-          const userDocRef = doc(db, 'users', firebaseUser.uid);
-          const userData: UserFirestoreData = {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            role: 'pending', // Set role to 'pending'
-            createdAt: serverTimestamp(),
-          };
-          await setDoc(userDocRef, userData);
-          
-          // Sign the user out immediately after registration
-          await signOut(auth);
+             // 2. Check if a pending request for this email already exists
+             const requestQuery = query(collection(db, 'adminRequests'), where('email', '==', email), where('status', '==', 'pending'));
+             const existingRequests = await getDocs(requestQuery);
+             if (!existingRequests.empty) {
+                 throw new Error('Una richiesta per questa email è già in attesa di approvazione.');
+             }
+             
+             // 3. Encrypt the password on the server
+             const hashedPassword = await encryptPassword(password);
 
-          set({ isLoading: false });
-        } catch (error: any) {
-          set({ isLoading: false });
-          console.error('Errore nella richiesta di registrazione admin:', error);
-          throw error;
-        }
-      },
+             // 4. Save the request to Firestore `adminRequests` collection
+             await addDoc(collection(db, 'adminRequests'), {
+                 email,
+                 hashedPassword, // Store the encrypted password
+                 status: 'pending',
+                 requestedAt: serverTimestamp(),
+             });
+
+             set({ isLoading: false });
+         } catch (error: any) {
+             set({ isLoading: false });
+             console.error('Errore nella richiesta di registrazione admin:', error);
+             throw error;
+         }
+     },
+
 
       logout: async () => {
         set({ isLoading: true });
@@ -148,6 +167,7 @@ export const useAuthStore = create<AuthState>()(
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data() as UserFirestoreData;
+            // The logic to block 'pending' users is now handled during login
             return userData.role;
           } else {
             console.warn('Documento utente non trovato in Firestore per UID:', uid, "- l'utente potrebbe non avere un ruolo assegnato.");
@@ -165,9 +185,8 @@ export const useAuthStore = create<AuthState>()(
           try {
             const role = await get()._fetchUserRole(fbUser.uid);
 
-            if (role === 'pending' || role === 'guest') {
-              // If role is pending or guest (no doc), they are not authenticated in our app logic
-              await signOut(auth); // Ensure they are signed out of Firebase
+            if (role === 'guest') {
+              await signOut(auth);
               set({ ...initialAuthState, isLoading: false });
             } else {
               set({
@@ -192,7 +211,6 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// This listener remains critical for keeping state in sync
 if (typeof window !== 'undefined' && auth) {
   onAuthStateChanged(auth, async (user) => { 
     await useAuthStore.getState()._updateAuthData(user);
@@ -201,3 +219,5 @@ if (typeof window !== 'undefined' && auth) {
     useAuthStore.setState({ ...initialAuthState, isLoading: false });
   });
 }
+
+    

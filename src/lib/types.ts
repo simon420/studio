@@ -10,7 +10,7 @@ export type Product = {
   addedByEmail?: string; // Email of the user who added the product
 };
 
-export type UserRole = 'admin' | 'user' | 'pending';
+export type UserRole = 'admin' | 'user'; // 'pending' role is no longer used in user documents
 
 // Define the structure for a User stored in Firestore
 export type UserFirestoreData = {
@@ -20,16 +20,17 @@ export type UserFirestoreData = {
   createdAt?: any; // Firestore ServerTimestamp
 };
 
-// This type is no longer needed as we now check the 'users' collection directly.
-// export type AdminRequest = {
-//     id: string;
-//     email: string;
-//     // Password should not be stored directly long-term, but is needed for creation
-//     password?: string;
-//     status: 'pending' | 'approved' | 'declined';
-//     requestedAt: any; // Firestore Timestamp
-// }
+// This type is for the new admin registration request flow
+export type AdminRequest = {
+    id: string;
+    email: string;
+    hashedPassword?: string; // Password is now stored hashed in the request
+    status: 'pending' | 'approved' | 'declined';
+    requestedAt: any; // Firestore Timestamp
+}
 
 
 // SessionPayload is no longer needed with Firebase Auth handling sessions.
 // If you pass ID tokens to backend, you might define a type for the decoded token.
+
+    
