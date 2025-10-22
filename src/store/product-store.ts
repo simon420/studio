@@ -1,3 +1,4 @@
+
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Product } from '@/lib/types';
@@ -49,92 +50,80 @@ export const useProductStore = create<ProductState>()(
       },
       
       listenToAllProductShards: () => {
-        const { isAuthenticated, isLoading: authIsLoading, uid: currentUserId } = useAuthStore.getState();
-
-        if (authIsLoading || !isAuthenticated) {
-          get().clearSearchAndResults();
-          return;
-        }
-
-        get().cleanupProductListeners();
-        isInitialLoad = true;
-        const productsByShard: { [key: string]: Product[] } = {};
-
-        const updateAndNotify = (newProductList: Product[]) => {
-            const { addNotification } = useNotificationStore.getState();
-            const oldProducts = get().products;
-            
-            // Do not notify on the very first data load
-            if (!isInitialLoad) {
-                const oldProductMap = new Map(oldProducts.map(p => [p.id, p]));
-                const newProductMap = new Map(newProductList.map(p => [p.id, p]));
-                
-                // Check for added/updated products
-                newProductList.forEach(newProduct => {
-                    const oldProduct = oldProductMap.get(newProduct.id);
-                    if (!oldProduct && newProduct.addedByUid !== currentUserId) {
-                        addNotification({
-                            type: 'product_added',
-                            message: `Nuovo prodotto: "${newProduct.name}" aggiunto da ${newProduct.addedByEmail}.`,
-                        });
-                    } else if (oldProduct && JSON.stringify(oldProduct) !== JSON.stringify(newProduct) && newProduct.addedByUid !== currentUserId) {
-                        addNotification({
-                            type: 'product_updated',
-                            message: `Prodotto "${newProduct.name}" aggiornato da ${newProduct.addedByEmail}.`,
-                        });
-                    }
-                });
-        
-                // Check for deleted products
-                oldProducts.forEach(oldProduct => {
-                    if (!newProductMap.has(oldProduct.id) && oldProduct.addedByUid !== currentUserId) {
-                        addNotification({
-                            type: 'product_deleted',
-                            message: `Prodotto "${oldProduct.name}" eliminato.`,
-                        });
-                    }
-                });
-            }
-            
-            set({ products: newProductList });
-            get().filterProducts();
-        
-            if (isInitialLoad) {
-                isInitialLoad = false; // Mark initial load as complete
-            }
-        };
-
-        const updateCombinedProducts = () => {
-            const allProducts = Object.values(productsByShard).flat();
-            updateAndNotify(allProducts);
-        };
-        
-
-        productListeners = shardIds.map(shardId => {
-          const shardDb = shards[shardId as keyof typeof shards];
-          const productCollection = collection(shardDb, 'products');
-
-          const unsubscribe = onSnapshot(productCollection, (snapshot) => {
-            const fullProductList: Product[] = snapshot.docs.map(docSnap => {
-              const data = docSnap.data();
-              return {
-                id: docSnap.id,
-                name: data.name,
-                code: data.code,
-                price: data.price,
-                serverId: shardId,
-                addedByUid: data.addedByUid,
-                addedByEmail: data.addedByEmail,
-              };
-            });
-            productsByShard[shardId] = fullProductList;
-            updateCombinedProducts();
-          }, (error) => {
-            console.error(`Errore di ascolto per lo shard ${shardId}:`, error);
+          const { isAuthenticated, isLoading: authIsLoading, uid: currentUserId } = useAuthStore.getState();
+      
+          if (authIsLoading || !isAuthenticated) {
+              get().clearSearchAndResults();
+              return;
+          }
+      
+          get().cleanupProductListeners();
+          let localIsInitialLoad = true;
+          const productsByShard: { [key: string]: Product[] } = {};
+      
+          const processUpdates = () => {
+              const newProductList = Object.values(productsByShard).flat();
+              const oldProducts = get().products;
+              const { addNotification } = useNotificationStore.getState();
+      
+              // Do not notify on the very first data load
+              if (!localIsInitialLoad) {
+                  const oldProductMap = new Map(oldProducts.map(p => [p.id, p]));
+                  const newProductMap = new Map(newProductList.map(p => [p.id, p]));
+      
+                  // Check for added/updated products
+                  newProductList.forEach(newProduct => {
+                      const oldProduct = oldProductMap.get(newProduct.id);
+                      if (!oldProduct && newProduct.addedByUid !== currentUserId) {
+                          addNotification({
+                              type: 'product_added',
+                              message: `Nuovo prodotto: "${newProduct.name}" aggiunto da ${newProduct.addedByEmail}.`,
+                          });
+                      } else if (oldProduct && JSON.stringify(oldProduct) !== JSON.stringify(newProduct) && newProduct.addedByUid !== currentUserId) {
+                          addNotification({
+                              type: 'product_updated',
+                              message: `Prodotto "${newProduct.name}" aggiornato.`,
+                          });
+                      }
+                  });
+      
+                  // Check for deleted products
+                  oldProducts.forEach(oldProduct => {
+                      if (!newProductMap.has(oldProduct.id) && oldProduct.addedByUid !== currentUserId) {
+                          addNotification({
+                              type: 'product_deleted',
+                              message: `Prodotto "${oldProduct.name}" eliminato.`,
+                          });
+                      }
+                  });
+              }
+      
+              set({ products: newProductList });
+              get().filterProducts();
+      
+              // After the first complete data load, set initial load to false
+              if (localIsInitialLoad && Object.keys(productsByShard).length === shardIds.length) {
+                  localIsInitialLoad = false;
+              }
+          };
+      
+          productListeners = shardIds.map(shardId => {
+              const shardDb = shards[shardId as keyof typeof shards];
+              const productCollection = collection(shardDb, 'products');
+      
+              const unsubscribe = onSnapshot(productCollection, (snapshot) => {
+                  productsByShard[shardId] = snapshot.docs.map(docSnap => ({
+                      id: docSnap.id,
+                      ...docSnap.data(),
+                      serverId: shardId,
+                  } as Product));
+                  processUpdates();
+              }, (error) => {
+                  console.error(`Errore di ascolto per lo shard ${shardId}:`, error);
+              });
+      
+              return unsubscribe;
           });
-
-          return unsubscribe;
-        });
       },
 
       cleanupProductListeners: () => {
@@ -196,7 +185,7 @@ export const useProductStore = create<ProductState>()(
             throw new Error("L'amministratore può aggiornare solo i propri prodotti.");
         }
 
-        await updateDoc(productDocRef, { ...updatedData, addedByUid: uid, addedByEmail: useAuthStore.getState().email });
+        await updateDoc(productDocRef, updatedData);
       },
 
       deleteProductFromStoreAndFirestore: async (productId, serverId) => {
@@ -229,7 +218,7 @@ export const useProductStore = create<ProductState>()(
       },
 
       superAdminUpdateProduct: async (productId, serverId, updatedData) => {
-        const { userRole, isAuthenticated, uid, email } = useAuthStore.getState();
+        const { userRole, isAuthenticated } = useAuthStore.getState();
         if (!isAuthenticated || userRole !== 'super-admin') {
           throw new Error("Solo i super-amministratori possono eseguire questa azione.");
         }
@@ -240,7 +229,7 @@ export const useProductStore = create<ProductState>()(
         }
 
         const productDocRef = doc(shardDb, 'products', productId);
-        await updateDoc(productDocRef, { ...updatedData, addedByUid: uid, addedByEmail: email });
+        await updateDoc(productDocRef, updatedData);
       },
 
       superAdminDeleteProduct: async (productId, serverId) => {
