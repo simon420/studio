@@ -6,6 +6,7 @@ import { collection, doc, deleteDoc, query, where, onSnapshot, Unsubscribe, Docu
 import type { AdminRequest } from '@/lib/types';
 import { useNotificationStore } from './notification-store';
 import { useAuthStore } from './auth-store';
+import { useUserManagementStore } from './user-management-store'; // Import user management store
 
 // Keep track of the real-time listener
 let adminRequestListener: Unsubscribe | null = null;
@@ -101,16 +102,17 @@ export const useAdminStore = create<AdminState>()(
       },
 
       approveAdminRequest: async (requestId: string) => {
+        const { addNotification } = useNotificationStore.getState();
         const approvedData = await approveRequestApiCall(requestId);
         
-        useNotificationStore.getState().addNotification({
+        addNotification({
             type: 'user_approved',
             message: `L'utente admin ${approvedData.email} è stato approvato e creato.`,
         });
         
         // After approval, trigger a manual fetch of users in the user management store
         // This ensures the user list is updated immediately.
-        useAuthStore.getState()._fetchUsersForStore(); // Assuming a function to trigger fetch exists
+        useUserManagementStore.getState().fetchUsers();
 
         // The onSnapshot listener will automatically remove the request from the list.
       },
@@ -125,24 +127,6 @@ export const useAdminStore = create<AdminState>()(
     { name: 'AdminStore' }
   )
 );
-
-// This function needs to be defined in user-management-store
-// For now, let's create a placeholder in auth-store to call it.
-// This is not ideal, but it's a quick fix to link the two stores.
-declare module '@/store/auth-store' {
-    interface AuthState {
-        _fetchUsersForStore: () => void;
-    }
-}
-useAuthStore.setState({
-    _fetchUsersForStore: () => {
-        // This dynamically imports and calls the fetchUsers function from the userManagementStore
-        import('@/store/user-management-store').then(store => {
-            store.useUserManagementStore.getState().fetchUsers();
-        });
-    }
-});
-
 
 // Subscribe to auth changes to manage the admin requests listener
 if (typeof window !== 'undefined') {

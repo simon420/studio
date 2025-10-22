@@ -30,6 +30,7 @@ import { useAuthStore } from '@/store/auth-store';
 import type { UserRole } from '@/lib/types';
 import { UserPlus, Loader2 } from 'lucide-react';
 import { useNotificationStore } from '@/store/notification-store';
+import { useUserManagementStore } from '@/store/user-management-store';
 
 const registerSchema = z.object({
   email: z.string().email('Indirizzo email non valido').min(1, 'Email è richiesta'),
@@ -45,9 +46,10 @@ const registerSchema = z.object({
 export default function RegisterForm() {
   const router = useRouter();
   const { toast } = useToast();
-  const { register, requestAdminRegistration, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
+  const { register, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
   const [isSubmittingForm, setIsSubmittingForm] = React.useState(false);
   const addNotification = useNotificationStore((state) => state.addNotification);
+  const fetchUsers = useUserManagementStore((state) => state.fetchUsers);
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -71,12 +73,12 @@ export default function RegisterForm() {
 
     try {
         if (values.role === 'admin') {
-            await requestAdminRegistration(values.email, values.password);
+            await useAuthStore.getState().requestAdminRegistration(values.email, values.password);
             toast({
                 title: 'Richiesta Inviata',
                 description: 'La tua richiesta di registrazione come admin è stata inviata per approvazione.',
             });
-            // The notification is now handled by the real-time listener in admin-store.
+            // The real-time listener in admin-store will now handle the notification
             router.push('/login');
         } else {
             await register(values.email, values.password, values.role);
@@ -90,6 +92,10 @@ export default function RegisterForm() {
                 type: 'user_registered',
                 message: `Nuovo utente registrato: ${values.email}`,
             });
+            // Fetch users again to update the list for super-admin
+            if (useAuthStore.getState().userRole === 'super-admin') {
+                fetchUsers();
+            }
         }
     } catch (error: any) {
         console.error('Registration/Request Error:', error);
