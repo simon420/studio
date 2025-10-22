@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth-store';
 import { useForm } from 'react-hook-form';
@@ -169,6 +170,11 @@ export default function SuperAdminLoginPage() {
                 </Button>
               </form>
             </Form>
+             <p className="mt-6 text-center text-sm text-card-foreground/80">
+                <Link href="/" className="font-semibold text-primary hover:text-primary/80 underline">
+                  Torna alla pagina principale
+                </Link>
+              </p>
           </CardContent>
         </Card>
       </div>
