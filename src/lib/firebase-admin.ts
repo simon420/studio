@@ -1,5 +1,6 @@
 // src/lib/firebase-admin.ts
 import admin from 'firebase-admin';
+import path from 'path';
 
 // Questa funzione assicura che Firebase Admin SDK sia inizializzato e restituisce i suoi servizi.
 // È progettata per essere idempotente (esegue l'inizializzazione solo una volta).
@@ -20,8 +21,9 @@ export function getAdminServices() {
 
   // Inizializzazione tramite file JSON delle credenziali
   try {
+    const serviceAccountPath = path.resolve(process.cwd(), 'firebase-service-account.json');
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const serviceAccount = require('../../../firebase-service-account.json');
+    const serviceAccount = require(serviceAccountPath);
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
