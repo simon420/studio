@@ -31,8 +31,12 @@ export function getAdminServices() {
   console.log('FIREBASE_SERVICE_ACCOUNT_KEY environment variable found. Attempting to initialize Admin SDK...');
 
   try {
+    // Replace escaped newlines with actual newlines, as requested.
+    // This is often necessary when private keys are passed through environment variables.
+    const serviceAccountString = serviceAccountEnv.replace(/\\n/g, '\n');
+    
     // We need to parse the JSON string from the environment variable.
-    const serviceAccount = JSON.parse(serviceAccountEnv);
+    const serviceAccount = JSON.parse(serviceAccountString);
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
@@ -47,7 +51,7 @@ export function getAdminServices() {
     };
   } catch (e: any) {
     let error;
-    if (e.message.includes('JSON')) {
+    if (e instanceof SyntaxError) { // More specific error check for JSON parsing
       error = `Error parsing FIREBASE_SERVICE_ACCOUNT_KEY as JSON: ${e.message}`;
     } else {
       error = `Error initializing Firebase Admin SDK with parsed credentials: ${e.message}`;
