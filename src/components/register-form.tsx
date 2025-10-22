@@ -1,4 +1,3 @@
-
 // src/components/register-form.tsx
 'use client';
 
@@ -61,71 +60,67 @@ export default function RegisterForm() {
   React.useEffect(() => {
     if (isAuthenticated && !authIsLoading) {
       router.push('/'); 
-      router.refresh();
     }
   }, [isAuthenticated, authIsLoading, router]);
 
   async function onSubmit(values: z.infer<typeof registerSchema>) {
     setIsSubmittingForm(true);
-    form.clearErrors();
-    let errorMessage = 'Si è verificato un errore imprevisto.';
+    form.clearErrors(); // Clear previous server errors
 
     try {
-      if (values.role === 'admin') {
-        await requestAdminRegistration(values.email, values.password);
-        toast({
-          title: 'Richiesta Inviata',
-          description: "La tua richiesta di registrazione come amministratore è stata inviata per l'approvazione.",
-        });
-        form.reset();
-      } else { // role === 'user'
-        await register(values.email, values.password, values.role);
-        // onAuthStateChanged in store handles setting isAuthenticated.
-        // useEffect above handles redirect.
-        toast({
-          title: 'Registrazione Riuscita',
-          description: 'Il tuo account è stato creato. Hai effettuato l\'accesso.',
-        });
-      }
-    } catch (error: any) {
-      console.error('Registration form error:', error);
-      if (error.code) {
-        switch (error.code) {
-          case 'auth/email-already-in-use':
-            errorMessage = 'Questo indirizzo email è già in uso.';
-            form.setError('email', { type: 'server', message: errorMessage });
-            break;
-          case 'auth/weak-password':
-            errorMessage = 'La password è troppo debole (almeno 6 caratteri).';
-            form.setError('password', { type: 'server', message: errorMessage });
-            break;
-          case 'auth/invalid-email':
-            errorMessage = 'L\'indirizzo email non è valido.';
-            form.setError('email', { type: 'server', message: errorMessage });
-            break;
-          default:
-            errorMessage = error.message || 'Registrazione fallita.';
+        if (values.role === 'admin') {
+            await requestAdminRegistration(values.email, values.password);
+            toast({
+                title: 'Richiesta Inviata',
+                description: 'La tua richiesta di registrazione come admin è stata inviata per approvazione.',
+            });
+            router.push('/login');
+        } else {
+            await register(values.email, values.password, values.role);
+            // The onAuthStateChanged listener in auth-store will handle the redirect
+            toast({
+                title: 'Registrazione Riuscita',
+                description: 'Benvenuto! Login in corso...',
+            });
         }
-      } else {
-        errorMessage = error.message || 'Registrazione fallita.';
-      }
-      
-      toast({
-        title: 'Registrazione Fallita',
-        description: errorMessage,
-        variant: 'destructive',
-      });
-       if (!form.formState.errors.email && !form.formState.errors.password && !form.formState.errors.confirmPassword && !form.formState.errors.role) {
-          form.setError('root.serverError', {
-             type: 'server',
-             message: errorMessage
-          });
-       }
+    } catch (error: any) {
+        console.error('Registration/Request Error:', error);
+        let errorMessage = "Si è verificato un errore imprevisto.";
+        if (error.code) {
+             switch (error.code) {
+                 case 'auth/email-already-in-use':
+                    errorMessage = 'Questa email è già in uso. Prova ad accedere.';
+                    form.setError('email', { type: 'server', message: errorMessage });
+                    break;
+                 case 'auth/invalid-email':
+                    errorMessage = 'L\'indirizzo email non è valido.';
+                    form.setError('email', { type: 'server', message: errorMessage });
+                    break;
+                 default:
+                    errorMessage = 'Registrazione fallita. Riprova.';
+             }
+        } else {
+          // Handle custom errors thrown from the store
+          errorMessage = error.message;
+        }
+
+        toast({
+            title: 'Registrazione Fallita',
+            description: errorMessage,
+            variant: 'destructive',
+        });
+        // Set a general form error if it's not field-specific
+        if (!form.formState.errors.email && !form.formState.errors.confirmPassword) {
+            form.setError("root.serverError", {
+                type: "server",
+                message: errorMessage,
+            });
+        }
     } finally {
-      setIsSubmittingForm(false);
+        setIsSubmittingForm(false);
     }
   }
-  
+
   const displayLoading = authIsLoading || isSubmittingForm;
 
   return (
@@ -151,7 +146,7 @@ export default function RegisterForm() {
             <FormItem>
               <FormLabel>Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="min. 6 caratteri" {...field} disabled={displayLoading} />
+                <Input type="password" placeholder="********" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -164,7 +159,7 @@ export default function RegisterForm() {
             <FormItem>
               <FormLabel>Conferma Password</FormLabel>
               <FormControl>
-                <Input type="password" placeholder="riscrivi la password" {...field} disabled={displayLoading} />
+                <Input type="password" placeholder="********" {...field} disabled={displayLoading} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -175,37 +170,35 @@ export default function RegisterForm() {
           name="role"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Ruolo</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={displayLoading}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Seleziona un ruolo" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="user">Utente</SelectItem>
-                  <SelectItem value="admin">Admin (Richiede Approvazione)</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormDescription>
-                Gli Admin possono aggiungere prodotti, gli Utenti possono solo cercare.
-              </FormDescription>
-              <FormMessage />
+                <FormLabel>Ruolo</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={displayLoading}>
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Seleziona un ruolo" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        <SelectItem value="user">Utente</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                </Select>
+                <FormDescription>
+                    Gli account admin richiedono l'approvazione del super admin.
+                </FormDescription>
+                <FormMessage />
             </FormItem>
           )}
         />
-         {form.formState.errors.root?.serverError && (
+        {form.formState.errors.root?.serverError && (
              <p className="text-sm font-medium text-destructive">
-                 {form.formState.errors.root?.serverError?.message}
+                 {form.formState.errors.root.serverError.message}
              </p>
          )}
         <Button type="submit" className="w-full" disabled={displayLoading}>
-          {displayLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" /> }
+          {displayLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
           {displayLoading ? 'Registrazione...' : 'Registrati'}
         </Button>
       </form>
     </Form>
   );
 }
-
-    

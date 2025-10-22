@@ -1,3 +1,4 @@
+// src/lib/types.ts
 // Define the structure for a Product
 export type Product = {
   id: string; // Unique identifier (e.g., combination of serverId and code or a UUID)
@@ -17,17 +18,17 @@ export type UserFirestoreData = {
   email: string | null; // Email from Firebase Auth
   role: UserRole;
   createdAt?: any; // Firestore ServerTimestamp
-  // Add any other profile information you want to store
 };
 
-export type AdminRequest = {
-    id: string;
-    email: string;
-    // Password should not be stored directly long-term, but is needed for creation
-    password?: string;
-    status: 'pending' | 'approved' | 'declined';
-    requestedAt: any; // Firestore Timestamp
-}
+// This type is no longer needed as we now check the 'users' collection directly.
+// export type AdminRequest = {
+//     id: string;
+//     email: string;
+//     // Password should not be stored directly long-term, but is needed for creation
+//     password?: string;
+//     status: 'pending' | 'approved' | 'declined';
+//     requestedAt: any; // Firestore Timestamp
+// }
 
 
 // SessionPayload is no longer needed with Firebase Auth handling sessions.
