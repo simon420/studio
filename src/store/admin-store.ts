@@ -5,7 +5,7 @@ import { db, auth } from '@/lib/firebase';
 import { collection, getDocs, doc, deleteDoc, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import type { AdminRequest, UserFirestoreData } from '@/lib/types';
-import { useAuthStore } from './auth-store';
+
 
 interface AdminState {
   requests: AdminRequest[];
@@ -22,12 +22,7 @@ export const useAdminStore = create<AdminState>()(
       isLoading: true,
 
       fetchRequests: async () => {
-        const { userRole } = useAuthStore.getState();
-        if (userRole !== 'admin') {
-            set({ requests: [], isLoading: false });
-            return;
-        }
-
+        // Rimosso controllo userRole, l'accesso è protetto dalla pagina super-admin
         set({ isLoading: true });
         try {
           const q = query(collection(db, 'adminRequests'), where('status', '==', 'pending'));
@@ -44,16 +39,12 @@ export const useAdminStore = create<AdminState>()(
       },
 
       approveAdminRequest: async (requestId: string, email: string, password: string) => {
-        const { userRole } = useAuthStore.getState();
-        if (userRole !== 'admin') {
-          throw new Error("Solo gli amministratori possono approvare le richieste.");
-        }
+        // Rimosso controllo userRole, l'accesso è protetto dalla pagina super-admin
         
         // This is complex because createUserWithEmailAndPassword logs the current user out.
-        // For this simple case, we will proceed, but a real app might use a backend function.
+        // In this Super Admin flow, there is no logged-in Firebase user, so this is safe.
         try {
-            // IMPORTANT: This will sign out the current admin. This is a limitation of client-side user creation.
-            // A better solution involves Cloud Functions to create users without affecting current auth state.
+            // 1. Create the user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const newAdminUser = userCredential.user;
 
@@ -76,8 +67,10 @@ export const useAdminStore = create<AdminState>()(
                 requests: state.requests.filter(req => req.id !== requestId)
             }));
             
-            // The current admin will be logged out. They need to log back in.
-            // This is a known side-effect of using client-side createUserWithEmailAndPassword.
+            // IMPORTANT: Since the super-admin is not a Firebase user, creating a new user here
+            // does not sign them out. However, it might briefly set the 'auth' state app-wide
+            // if not handled carefully. For this app's architecture, it's acceptable.
+            // A more robust system would use a Cloud Function.
 
         } catch (error: any) {
             console.error("Errore nell'approvazione della richiesta admin: ", error);
@@ -91,10 +84,7 @@ export const useAdminStore = create<AdminState>()(
       },
 
       declineAdminRequest: async (requestId: string) => {
-        const { userRole } = useAuthStore.getState();
-        if (userRole !== 'admin') {
-          throw new Error("Solo gli amministratori possono rifiutare le richieste.");
-        }
+       // Rimosso controllo userRole, l'accesso è protetto dalla pagina super-admin
         
         const requestDocRef = doc(db, 'adminRequests', requestId);
         await deleteDoc(requestDocRef);
