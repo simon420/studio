@@ -2,28 +2,26 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { useAuthStore } from './auth-store';
+import { useNotificationStore } from './notification-store';
+import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, Unsubscribe, DocumentChange, Timestamp } from 'firebase/firestore';
+import type { UserFirestoreData } from '@/lib/types';
+
 
 // We can't use the full UserRecord type on the client, so define a client-safe version
-export interface ClientUser {
-    uid: string;
-    email: string | undefined;
-    emailVerified: boolean;
-    disabled: boolean;
-    metadata: {
-        creationTime: string;
-        lastSignInTime: string;
-    };
-    customClaims?: { [key: string]: any };
-    // This will be fetched separately from Firestore
-    role?: string; 
+export interface ClientUser extends UserFirestoreData {
+    // This type now directly extends UserFirestoreData, which is what we get from the listener
 }
 
+let userListener: Unsubscribe | null = null;
+let userListenerAttachTime: number | null = null;
 
 interface UserManagementState {
   users: ClientUser[];
   isLoading: boolean;
   error: string | null;
-  fetchUsers: () => Promise<void>;
+  listenForUsers: () => void;
+  cleanupUserListener: () => void;
   deleteUser: (uid: string) => Promise<void>;
 }
 
@@ -31,31 +29,57 @@ export const useUserManagementStore = create<UserManagementState>()(
   devtools(
     (set, get) => ({
       users: [],
-      isLoading: false,
+      isLoading: true,
       error: null,
 
-      fetchUsers: async () => {
-        const { userRole } = useAuthStore.getState();
-        if (userRole !== 'super-admin') {
-          set({ error: 'Non autorizzato.', isLoading: false, users: [] });
-          return;
-        }
-
-        set({ isLoading: true, error: null });
-        try {
-          const response = await fetch('/api/super-admin/users');
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.message || 'Impossibile caricare gli utenti.');
+      listenForUsers: () => {
+          const { userRole } = useAuthStore.getState();
+          if (userRole !== 'super-admin') {
+            set({ error: 'Non autorizzato.', isLoading: false, users: [] });
+            return;
           }
-          const data = await response.json();
-          // Here you could enrich user data with roles from your Firestore 'users' collection
-          // For simplicity, we'll just display what we get from Auth for now.
-          set({ users: data.users, isLoading: false });
-        } catch (error: any) {
-          console.error("Errore nel fetch degli utenti:", error);
-          set({ error: error.message, isLoading: false });
+          
+          get().cleanupUserListener();
+          set({ isLoading: true, error: null });
+          userListenerAttachTime = Date.now();
+
+          const q = query(collection(db, 'users'));
+
+          userListener = onSnapshot(q, (snapshot) => {
+              const { addNotification } = useNotificationStore.getState();
+
+              snapshot.docChanges().forEach((change: DocumentChange) => {
+                  const userData = change.doc.data() as UserFirestoreData;
+                  const userTimestamp = (userData.createdAt as Timestamp)?.toDate().getTime() || 0;
+                  
+                  // Notify only for new users that were added after the listener was attached
+                  if (change.type === "added" && userListenerAttachTime && userTimestamp > userListenerAttachTime) {
+                      addNotification({
+                          type: 'user_registered',
+                          message: `Nuovo utente registrato: ${userData.email}`,
+                      });
+                  }
+              });
+
+              const usersData = snapshot.docs.map(docSnap => ({
+                  ...docSnap.data()
+              } as ClientUser));
+              
+              set({ users: usersData, isLoading: false });
+
+          }, (error) => {
+              console.error("Errore nel listener degli utenti:", error);
+              set({ error: error.message, isLoading: false });
+          });
+      },
+
+      cleanupUserListener: () => {
+        if (userListener) {
+            userListener();
+            userListener = null;
         }
+        userListenerAttachTime = null;
+        set({ users: [], isLoading: true, error: null });
       },
 
       deleteUser: async (uid: string) => {
@@ -76,11 +100,7 @@ export const useUserManagementStore = create<UserManagementState>()(
             throw new Error(errorData.message || 'Eliminazione utente fallita.');
           }
           
-          // Remove user from local state
-          set(state => ({
-            users: state.users.filter(user => user.uid !== uid),
-          }));
-
+          // The real-time listener will automatically remove the user from the local state.
         } catch (error: any) {
           console.error(`Errore nell'eliminare l'utente ${uid}:`, error);
           // Propagate the error so the component can display a toast
@@ -91,3 +111,31 @@ export const useUserManagementStore = create<UserManagementState>()(
     { name: 'UserManagementStore' }
   )
 );
+
+
+// Subscribe to auth changes to manage the user listener
+if (typeof window !== 'undefined') {
+    useAuthStore.subscribe(
+        (currentAuthState, previousAuthState) => {
+            const userStore = useUserManagementStore.getState();
+            const wasSuperAdmin = previousAuthState.userRole === 'super-admin';
+            const isSuperAdmin = currentAuthState.userRole === 'super-admin';
+
+            if (!wasSuperAdmin && isSuperAdmin) {
+                console.log("UserManagementStore: L'utente è super-admin. Avvio listener utenti.");
+                userStore.listenForUsers();
+            }
+            else if (wasSuperAdmin && !isSuperAdmin) {
+                 console.log("UserManagementStore: L'utente non è più super-admin. Pulisco listener utenti.");
+                 userStore.cleanupUserListener();
+            }
+        }
+    );
+
+    // Initial check on page load
+    const initialAuth = useAuthStore.getState();
+    if (initialAuth.isAuthenticated && initialAuth.userRole === 'super-admin' && !initialAuth.isLoading) {
+        console.log("UserManagementStore: Check iniziale, utente è super-admin. Avvio listener.");
+        useUserManagementStore.getState().listenForUsers();
+    }
+}

@@ -103,18 +103,21 @@ export const useAdminStore = create<AdminState>()(
 
       approveAdminRequest: async (requestId: string) => {
         const { addNotification } = useNotificationStore.getState();
-        const approvedData = await approveRequestApiCall(requestId);
+        const requestBeingApproved = get().pendingRequests.find(req => req.id === requestId);
         
-        addNotification({
-            type: 'user_approved',
-            message: `L'utente admin ${approvedData.email} è stato approvato e creato.`,
-        });
+        // This call will create the user in Auth and in the 'users' Firestore collection
+        await approveRequestApiCall(requestId);
         
-        // After approval, trigger a manual fetch of users in the user management store
-        // This ensures the user list is updated immediately.
-        useUserManagementStore.getState().fetchUsers();
-
-        // The onSnapshot listener will automatically remove the request from the list.
+        if (requestBeingApproved?.email) {
+            addNotification({
+                type: 'user_approved',
+                message: `L'utente admin ${requestBeingApproved.email} è stato approvato e creato.`,
+            });
+        }
+        
+        // The real-time listener in `user-management-store` will automatically
+        // pick up the new user added to the 'users' collection.
+        // The real-time listener on `adminRequests` will automatically remove the approved request.
       },
 
       declineAdminRequest: async (requestId: string) => {

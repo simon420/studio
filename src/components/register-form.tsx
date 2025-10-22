@@ -29,8 +29,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuthStore } from '@/store/auth-store';
 import type { UserRole } from '@/lib/types';
 import { UserPlus, Loader2 } from 'lucide-react';
-import { useNotificationStore } from '@/store/notification-store';
-import { useUserManagementStore } from '@/store/user-management-store';
 
 const registerSchema = z.object({
   email: z.string().email('Indirizzo email non valido').min(1, 'Email è richiesta'),
@@ -48,9 +46,7 @@ export default function RegisterForm() {
   const { toast } = useToast();
   const { register, isLoading: authIsLoading, isAuthenticated } = useAuthStore();
   const [isSubmittingForm, setIsSubmittingForm] = React.useState(false);
-  const addNotification = useNotificationStore((state) => state.addNotification);
-  const fetchUsers = useUserManagementStore((state) => state.fetchUsers);
-
+  
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -73,29 +69,22 @@ export default function RegisterForm() {
 
     try {
         if (values.role === 'admin') {
+            // This function now just creates the request. The listener in admin-store will handle the notification.
             await useAuthStore.getState().requestAdminRegistration(values.email, values.password);
             toast({
                 title: 'Richiesta Inviata',
                 description: 'La tua richiesta di registrazione come admin è stata inviata per approvazione.',
             });
-            // The real-time listener in admin-store will now handle the notification
             router.push('/login');
         } else {
+            // This function creates the user in Auth and in the 'users' collection in Firestore.
+            // The listener in `user-management-store` will pick up the new user and trigger a notification.
             await register(values.email, values.password, values.role);
-            // The onAuthStateChanged listener in auth-store will handle the redirect
             toast({
                 title: 'Registrazione Riuscita',
                 description: 'Benvenuto! Login in corso...',
             });
-            // Send notification to super-admin about the new user
-             addNotification({
-                type: 'user_registered',
-                message: `Nuovo utente registrato: ${values.email}`,
-            });
-            // Fetch users again to update the list for super-admin
-            if (useAuthStore.getState().userRole === 'super-admin') {
-                fetchUsers();
-            }
+            // The onAuthStateChanged listener in auth-store will handle the redirect
         }
     } catch (error: any) {
         console.error('Registration/Request Error:', error);

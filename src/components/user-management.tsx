@@ -30,16 +30,16 @@ import { Badge } from './ui/badge';
 import { useAuthStore } from '@/store/auth-store';
 
 export default function UserManagement() {
-  const { users, isLoading, error, fetchUsers, deleteUser } = useUserManagementStore();
+  // The store now handles listening for users in real-time.
+  // The component just displays the data from the store.
+  const { users, isLoading, error, deleteUser } = useUserManagementStore();
   const { uid: currentSuperAdminUid } = useAuthStore(); // Get current super-admin's UID
   const { toast } = useToast();
   
   const [userToDelete, setUserToDelete] = React.useState<ClientUser | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
 
-  React.useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+  // No more useEffect to fetch users here. The store manages the real-time listener.
 
   const openDeleteDialog = (user: ClientUser) => {
     if (user.uid === currentSuperAdminUid) {
@@ -75,11 +75,11 @@ export default function UserManagement() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && users.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Caricamento utenti...</p>
+        <p className="ml-2 text-muted-foreground">In attesa degli utenti...</p>
       </div>
     );
   }
@@ -104,8 +104,8 @@ export default function UserManagement() {
           <TableHeader className="sticky top-0 bg-secondary z-10">
             <TableRow>
               <TableHead>Email</TableHead>
+              <TableHead>Ruolo</TableHead>
               <TableHead>UID</TableHead>
-              <TableHead>Verificato</TableHead>
               <TableHead>Creato il</TableHead>
               <TableHead className="text-center">Azioni</TableHead>
             </TableRow>
@@ -125,15 +125,15 @@ export default function UserManagement() {
                 <TableRow key={user.uid}>
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>
-                     <Badge variant="outline">{user.uid}</Badge>
-                  </TableCell>
-                   <TableCell>
-                     <Badge variant={user.emailVerified ? 'default' : 'destructive'}>
-                       {user.emailVerified ? 'Sì' : 'No'}
+                     <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
+                       {user.role}
                      </Badge>
                   </TableCell>
                   <TableCell>
-                    {new Date(user.metadata.creationTime).toLocaleDateString('it-IT')}
+                     <Badge variant="outline">{user.uid}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}
                   </TableCell>
                   <TableCell className="text-center">
                     <Button
