@@ -3,7 +3,7 @@ import { devtools } from 'zustand/middleware';
 import type { Product } from '@/lib/types';
 import { useAuthStore } from './auth-store';
 import { db, shards } from '@/lib/firebase'; 
-import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, Firestore } from 'firebase/firestore';
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, query, where, writeBatch, Firestore, onSnapshot, Unsubscribe } from 'firebase/firestore';
 
 const shardIds = ['shard-a', 'shard-b', 'shard-c'];
 
@@ -13,6 +13,9 @@ function getShard(productCode: number): { shardId: string; shardDb: Firestore } 
     const shardId = shardIds[shardIndex];
     return { shardId, shardDb: shards[shardId as keyof typeof shards] };
 }
+
+// Keep track of unsubscribe functions for real-time listeners
+let productListeners: Unsubscribe[] = [];
 
 interface ProductState {
   searchTerm: string;
@@ -24,8 +27,8 @@ interface ProductState {
   deleteProductFromStoreAndFirestore: (productId: string, serverId: string) => Promise<void>;
   filterProducts: () => void;
   clearSearchAndResults: () => void;
-  loadInitialProducts: (initialProducts: Product[]) => void;
-  fetchProductsFromFirestore: () => Promise<void>;
+  listenToAllProductShards: () => void;
+  cleanupProductListeners: () => void;
   superAdminUpdateProduct: (productId: string, serverId: string, updatedData: Partial<Pick<Product, 'name' | 'price'>>) => Promise<void>;
   superAdminDeleteProduct: (productId: string, serverId: string) => Promise<void>;
 }
@@ -38,50 +41,61 @@ export const useProductStore = create<ProductState>()(
       products: [],
       filteredProducts: [],
 
-      loadInitialProducts: (initialProducts) => {
-        set({ products: initialProducts });
-        get().filterProducts(); 
-      },
-
       setSearchTerm: (term) => {
         set({ searchTerm: term });
         get().filterProducts();
       },
       
-      fetchProductsFromFirestore: async () => {
+      listenToAllProductShards: () => {
         const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
         if (authIsLoading || !isAuthenticated) {
-          set({ products: [], filteredProducts: []}); 
+          get().clearSearchAndResults();
           return;
         }
-        try {
-          const allProducts: Product[] = [];
-          for (const shardId in shards) {
-            const shardDb = shards[shardId as keyof typeof shards];
-            const productCollection = collection(shardDb, 'products');
-            const productSnapshot = await getDocs(productCollection);
-            const productList: Product[] = productSnapshot.docs.map(docSnap => {
+
+        // Clean up any existing listeners before starting new ones
+        get().cleanupProductListeners();
+
+        const productsByShard: { [key: string]: Product[] } = {};
+
+        const updateCombinedProducts = () => {
+          const allProducts = Object.values(productsByShard).flat();
+          set({ products: allProducts });
+          get().filterProducts();
+        };
+
+        productListeners = shardIds.map(shardId => {
+          const shardDb = shards[shardId as keyof typeof shards];
+          const productCollection = collection(shardDb, 'products');
+
+          const unsubscribe = onSnapshot(productCollection, (snapshot) => {
+            const productList: Product[] = snapshot.docs.map(docSnap => {
               const data = docSnap.data();
               return {
                 id: docSnap.id,
                 name: data.name,
                 code: data.code,
                 price: data.price,
-                serverId: shardId, 
+                serverId: shardId,
                 addedByUid: data.addedByUid,
                 addedByEmail: data.addedByEmail,
               };
             });
-            allProducts.push(...productList);
-          }
-          set({
-            products: allProducts,
+            productsByShard[shardId] = productList;
+            updateCombinedProducts();
+          }, (error) => {
+            console.error(`Errore di ascolto per lo shard ${shardId}:`, error);
           });
-          get().filterProducts(); 
-        } catch (error) {
-          console.error('Errore nel recupero dei prodotti da Firestore sharded:', error);
-        }
+
+          return unsubscribe;
+        });
       },
+
+      cleanupProductListeners: () => {
+        productListeners.forEach(unsubscribe => unsubscribe());
+        productListeners = [];
+      },
+
 
       addProduct: async (productData) => {
         const { userRole, isAuthenticated, isLoading: authIsLoading, uid, email } = useAuthStore.getState();
@@ -118,17 +132,8 @@ export const useProductStore = create<ProductState>()(
       
         await shardBatch.commit();
         await batch.commit();
-      
-        const newProductWithId: Product = {
-          ...productDataToSave,
-          id: newProductRef.id,
-          serverId: shardId,
-        };
-      
-        set((state) => ({
-          products: [...state.products, newProductWithId],
-        }));
-        get().filterProducts();
+
+        // No need to manually add to state, onSnapshot will handle it.
       },
 
       updateProductInStoreAndFirestore: async (productId, serverId, updatedData) => {
@@ -151,12 +156,7 @@ export const useProductStore = create<ProductState>()(
 
         await updateDoc(productDocRef, updatedData);
 
-        set((state) => ({
-          products: state.products.map((product) =>
-            product.id === productId ? { ...product, ...updatedData } : product
-          ),
-        }));
-        get().filterProducts();
+        // No need to manually update state, onSnapshot will handle it.
       },
 
       deleteProductFromStoreAndFirestore: async (productId, serverId) => {
@@ -188,11 +188,7 @@ export const useProductStore = create<ProductState>()(
         await shardBatch.commit();
         await mainDbBatch.commit();
 
-        // Update local state after successful deletion
-        set((state) => ({
-          products: state.products.filter((product) => product.id !== productId),
-        }));
-        get().filterProducts();
+        // No need to manually update state, onSnapshot will handle it.
       },
 
       superAdminUpdateProduct: async (productId, serverId, updatedData) => {
@@ -209,12 +205,7 @@ export const useProductStore = create<ProductState>()(
         const productDocRef = doc(shardDb, 'products', productId);
         await updateDoc(productDocRef, updatedData);
 
-        set((state) => ({
-          products: state.products.map((product) =>
-            product.id === productId ? { ...product, ...updatedData } : product
-          ),
-        }));
-        get().filterProducts();
+        // No need to manually update state, onSnapshot will handle it.
       },
 
       superAdminDeleteProduct: async (productId, serverId) => {
@@ -240,10 +231,7 @@ export const useProductStore = create<ProductState>()(
         await shardBatch.commit();
         await mainDbBatch.commit();
 
-        set((state) => ({
-          products: state.products.filter((product) => product.id !== productId),
-        }));
-        get().filterProducts();
+        // No need to manually update state, onSnapshot will handle it.
       },
 
       filterProducts: () => {
@@ -271,12 +259,8 @@ export const useProductStore = create<ProductState>()(
       },
 
       clearSearchAndResults: () => {
-          const { isAuthenticated } = useAuthStore.getState();
-          if (isAuthenticated) {
-             set({ searchTerm: '', filteredProducts: [], products: [] });
-          } else {
-            set({ searchTerm: '', filteredProducts: [], products: [] });
-          }
+          get().cleanupProductListeners();
+          set({ searchTerm: '', filteredProducts: [], products: [] });
       }
     }),
     { name: "ProductStore" } 
@@ -285,34 +269,30 @@ export const useProductStore = create<ProductState>()(
 
 
 if (typeof window !== 'undefined') {
-  const initialAuth = useAuthStore.getState();
-  if (!initialAuth.isLoading && initialAuth.isAuthenticated) {
-    useProductStore.getState().fetchProductsFromFirestore();
-  } else if (!initialAuth.isLoading && !initialAuth.isAuthenticated) {
-     useProductStore.getState().clearSearchAndResults();
-  }
-
+  // Subscribe to auth changes to manage product listeners
   useAuthStore.subscribe(
     (currentAuthState, previousAuthState) => {
       const productStore = useProductStore.getState();
-      
-      if (previousAuthState.isLoading && !currentAuthState.isLoading) {
-        if (currentAuthState.isAuthenticated) {
-          console.log("ProductStore: Autenticazione caricata, utente autenticato. Recupero prodotti.");
-          productStore.fetchProductsFromFirestore();
-        } else {
-          console.log("ProductStore: Autenticazione caricata, utente non autenticato. Pulisco prodotti.");
-          productStore.clearSearchAndResults();
-        }
+      const wasAuthenticated = previousAuthState.isAuthenticated;
+      const isAuthenticated = currentAuthState.isAuthenticated;
+
+      // User logs in
+      if (!wasAuthenticated && isAuthenticated) {
+        console.log("ProductStore: Utente autenticato. Avvio listener prodotti.");
+        productStore.listenToAllProductShards();
       }
-      else if (!previousAuthState.isAuthenticated && currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
-        console.log("ProductStore: Utente loggato. Recupero prodotti.");
-        productStore.fetchProductsFromFirestore();
-      }
-      else if (previousAuthState.isAuthenticated && !currentAuthState.isAuthenticated && !currentAuthState.isLoading) {
-        console.log("ProductStore: Utente disconnesso. Pulisco prodotti.");
-        productStore.clearSearchAndResults();
+      // User logs out
+      else if (wasAuthenticated && !isAuthenticated) {
+        console.log("ProductStore: Utente disconnesso. Pulisco prodotti e listeners.");
+        productStore.clearSearchAndResults(); // This also cleans up listeners
       }
     }
   );
+  
+  // Initial check on page load
+  const initialAuth = useAuthStore.getState();
+  if (initialAuth.isAuthenticated && !initialAuth.isLoading) {
+       console.log("ProductStore: Check iniziale, utente autenticato. Avvio listener.");
+       useProductStore.getState().listenToAllProductShards();
+  }
 }

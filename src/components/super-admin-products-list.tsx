@@ -3,6 +3,7 @@
 
 import * as React from 'react';
 import { useProductStore } from '@/store/product-store';
+import { useAuthStore } from '@/store/auth-store';
 import {
   Table,
   TableBody,
@@ -34,10 +35,10 @@ import { Badge } from '@/components/ui/badge';
 export default function SuperAdminProductsList() {
   const { 
     products, 
-    fetchProductsFromFirestore, 
     superAdminUpdateProduct, 
     superAdminDeleteProduct 
   } = useProductStore();
+  const { isLoading: authIsLoading } = useAuthStore();
   
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(true);
@@ -52,10 +53,16 @@ export default function SuperAdminProductsList() {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
 
+  // The listener in product-store now handles fetching, so we just check for loading state.
   React.useEffect(() => {
-    setIsLoading(true);
-    fetchProductsFromFirestore().finally(() => setIsLoading(false));
-  }, [fetchProductsFromFirestore]);
+    if (authIsLoading) {
+      setIsLoading(true);
+    } else {
+      // Data is loaded via real-time listeners, so if products are present, we're not "loading"
+      setIsLoading(products.length === 0 && authIsLoading);
+    }
+  }, [authIsLoading, products]);
+
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
@@ -133,11 +140,11 @@ export default function SuperAdminProductsList() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && products.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
-        <p className="ml-2 text-muted-foreground">Caricamento di tutti i prodotti...</p>
+        <p className="ml-2 text-muted-foreground">In attesa dei dati in tempo reale...</p>
       </div>
     );
   }

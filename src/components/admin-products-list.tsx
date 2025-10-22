@@ -35,7 +35,6 @@ import { Badge } from '@/components/ui/badge';
 export default function AdminProductsList() {
   const { uid, isLoading: authIsLoading } = useAuthStore();
   const products = useProductStore((state) => state.products);
-  const fetchProductsFromFirestore = useProductStore((state) => state.fetchProductsFromFirestore);
   const updateProduct = useProductStore((state) => state.updateProductInStoreAndFirestore);
   const deleteProduct = useProductStore((state) => state.deleteProductFromStoreAndFirestore);
   
@@ -53,18 +52,18 @@ export default function AdminProductsList() {
   const [isUpdating, setIsUpdating] = React.useState(false);
 
 
+  // The listener in product-store now handles fetching, so we just check for loading state.
   React.useEffect(() => {
-    if (!authIsLoading && uid) {
-        if (products.length === 0) {
-            setIsLoadingProducts(true);
-            fetchProductsFromFirestore().finally(() => setIsLoadingProducts(false));
-        } else {
-            setIsLoadingProducts(false);
-        }
-    } else if (authIsLoading) {
-        setIsLoadingProducts(true);
+    // Show loading spinner initially until products are loaded by the real-time listener
+    if (!authIsLoading && products.length === 0) {
+        // We can keep a short loading state for UX, but data will arrive automatically
+        const timer = setTimeout(() => setIsLoadingProducts(false), 1500); // Failsafe timeout
+        return () => clearTimeout(timer);
+    } else if (products.length > 0) {
+        setIsLoadingProducts(false);
     }
-  }, [authIsLoading, uid, fetchProductsFromFirestore, products.length]);
+  }, [authIsLoading, products]);
+
 
   const handleAdminSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setAdminSearchTerm(event.target.value);
@@ -146,7 +145,7 @@ export default function AdminProductsList() {
   };
 
 
-  if (authIsLoading || isLoadingProducts) {
+  if (authIsLoading || (isLoadingProducts && products.length === 0)) {
     return (
       <div className="flex items-center justify-center h-[200px]">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
