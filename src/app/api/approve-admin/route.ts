@@ -1,7 +1,7 @@
 // src/app/api/approve-admin/route.ts
 import { NextResponse } from 'next/server';
 import { getAdminServices } from '@/lib/firebase-admin';
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 export async function POST(request: Request) {
   const { adminDb, adminAuth, error: adminInitializationError } = getAdminServices();

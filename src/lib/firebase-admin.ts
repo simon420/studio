@@ -1,5 +1,5 @@
 // src/lib/firebase-admin.ts
-import * as admin from 'firebase-admin';
+import admin from 'firebase-admin';
 
 // Questa funzione assicura che Firebase Admin SDK sia inizializzato e restituisce i suoi servizi.
 // È progettata per essere idempotente (esegue l'inizializzazione solo una volta).
@@ -19,7 +19,7 @@ export function getAdminServices() {
   }
 
   // IMPORTANTE: la chiave di servizio viene caricata in modo sicuro da una variabile d'ambiente.
-  // Questa variabile ora è gestita tramite il file .env.local.
+  // Questa variabile è gestita tramite il file .env.local.
   const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
 
   if (!serviceAccountEnv || serviceAccountEnv === 'INCOLLA QUI LA TUA CHIAVE DI SERVIZIO JSON COMPLETA') {
