@@ -7,14 +7,22 @@ import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AdminRequests from '@/components/admin-requests';
-import { Loader2, LogOut, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Loader2, LogOut, ShieldCheck, ShieldAlert, KeyRound, ServerCrash } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
   const { userRole, isAuthenticated, logout, isLoading } = useAuthStore();
   const { toast } = useToast();
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
+
+  // State for debugging the private key
+  const [privateKey, setPrivateKey] = React.useState<string>('');
+  const [isFetchingKey, setIsFetchingKey] = React.useState<boolean>(false);
+  const [keyError, setKeyError] = React.useState<string>('');
 
   React.useEffect(() => {
     // If auth is not loading and the user is not a super-admin, redirect them.
@@ -43,6 +51,27 @@ export default function SuperAdminDashboardPage() {
       setIsLoggingOut(false);
     }
   };
+
+  const fetchPrivateKeyForDebug = async () => {
+    setIsFetchingKey(true);
+    setKeyError('');
+    setPrivateKey('');
+    try {
+        const response = await fetch('/api/debug-key');
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Errore nel recupero della chiave.');
+        }
+        const data = await response.json();
+        setPrivateKey(data.privateKey || 'CHIAVE VUOTA O NON TROVATA');
+    } catch (error: any) {
+        console.error('Fetch private key error:', error);
+        setKeyError(error.message);
+    } finally {
+        setIsFetchingKey(false);
+    }
+  };
+
 
   // Show a loading screen while authentication status is being determined.
   if (isLoading) {
@@ -96,7 +125,45 @@ export default function SuperAdminDashboardPage() {
                   <AdminRequests />
                 </CardContent>
               </Card>
-              {/* Other super admin panels will go here */}
+
+              {/* Debugging Panel */}
+              <Card className="border-amber-500 border-2">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-amber-600">
+                    <KeyRound className="mr-2"/>
+                    Pannello di Debug: Chiave Privata
+                  </CardTitle>
+                  <CardDescription>
+                    Utilizza questo strumento per visualizzare il valore della variabile d'ambiente della chiave privata così come viene letta dal server.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                   <Button onClick={fetchPrivateKeyForDebug} disabled={isFetchingKey}>
+                     {isFetchingKey ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <KeyRound className="mr-2 h-4 w-4" />}
+                     {isFetchingKey ? 'Recupero...' : 'Mostra Chiave Privata'}
+                   </Button>
+                   {keyError && (
+                    <Alert variant="destructive">
+                        <ServerCrash className="h-4 w-4" />
+                        <AlertTitle>Errore</AlertTitle>
+                        <AlertDescription>{keyError}</AlertDescription>
+                    </Alert>
+                   )}
+                   {privateKey && (
+                     <div>
+                        <Label htmlFor="privateKeyDebug" className="mb-2 block">Valore di FIREBASE_PRIVATE_KEY dal server:</Label>
+                        <Textarea
+                            id="privateKeyDebug"
+                            readOnly
+                            value={privateKey}
+                            className="h-48 font-mono text-xs bg-muted/50"
+                            placeholder="La chiave privata apparirà qui..."
+                        />
+                     </div>
+                   )}
+                </CardContent>
+              </Card>
+
           </main>
         </div>
       </div>
