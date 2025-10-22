@@ -55,7 +55,7 @@ export async function POST(request: Request) {
             userRecord = await adminAuth.getUserByEmail(requestData.email);
         } else {
             console.error('Error creating user in Firebase Auth:', error);
-            throw new Error(error.message || "Impossibile creare l'utente in Firebase Auth.");
+            throw new Error(`Impossibile creare l'utente in Firebase Auth: ${error.message}`);
         }
     }
 
