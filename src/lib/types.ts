@@ -10,7 +10,7 @@ export type Product = {
   addedByEmail?: string; // Email of the user who added the product
 };
 
-export type UserRole = 'admin' | 'user'; // 'pending' role is no longer used in user documents
+export type UserRole = 'admin' | 'user' | 'super-admin'; // Added 'super-admin' role
 
 // Define the structure for a User stored in Firestore
 export type UserFirestoreData = {

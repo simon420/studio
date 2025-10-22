@@ -36,21 +36,6 @@ const initialAuthState = {
   isLoading: true, // Start in loading state until first auth check
 };
 
-// API call to encrypt password on the server - NO LONGER NEEDED for admin requests
-// async function encryptPassword(password: string): Promise<string> {
-//     const response = await fetch('/api/encrypt', {
-//         method: 'POST',
-//         headers: { 'Content-Type': 'application/json' },
-//         body: JSON.stringify({ password }),
-//     });
-//     if (!response.ok) {
-//         const error = await response.json();
-//         throw new Error(error.message || 'Password encryption failed.');
-//     }
-//     const { hashedPassword } = await response.json();
-//     return hashedPassword;
-// }
-
 
 export const useAuthStore = create<AuthState>()(
   devtools( 
@@ -70,7 +55,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       register: async (email, password, role) => {
-        if (role === 'admin') {
+        if (role === 'admin' || role === 'super-admin') {
           return get().requestAdminRegistration(email, password);
         }
         set({ isLoading: true });
@@ -118,8 +103,6 @@ export const useAuthStore = create<AuthState>()(
                  throw new Error('Una richiesta per questa email è già in attesa di approvazione.');
              }
              
-             // 3. Save the request to Firestore `adminRequests` collection with the PLAIN-TEXT password.
-             // Firestore security rules MUST protect this collection.
              await addDoc(collection(db, 'adminRequests'), {
                  email,
                  password, // Storing plain-text password temporarily.

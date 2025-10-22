@@ -3,33 +3,49 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { useSuperAdminStore } from '@/store/super-admin-store';
+import { useAuthStore } from '@/store/auth-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import AdminRequests from '@/components/admin-requests';
-import { Loader2, LogOut, ShieldCheck } from 'lucide-react';
+import { Loader2, LogOut, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 export default function SuperAdminDashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, logout } = useSuperAdminStore();
-  const [isClient, setIsClient] = React.useState(false);
+  const { userRole, isAuthenticated, logout, isLoading } = useAuthStore();
+  const { toast } = useToast();
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
 
   React.useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  React.useEffect(() => {
-    if (isClient && !isAuthenticated) {
+    // If auth is not loading and the user is not a super-admin, redirect them.
+    if (!isLoading && (!isAuthenticated || userRole !== 'super-admin')) {
       router.replace('/super-admin');
     }
-  }, [isAuthenticated, router, isClient]);
-  
-  const handleLogout = () => {
-    logout();
-    // The effect above will handle the redirection
+  }, [isAuthenticated, userRole, isLoading, router]);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      toast({
+        title: 'Disconnesso',
+        description: 'Sei stato disconnesso con successo.',
+      });
+      // The useEffect will handle redirecting to the login page after state change.
+    } catch (error: any) {
+      console.error('Logout failed:', error);
+      toast({
+        title: 'Logout Fallito',
+        description: error.message || 'Impossibile effettuare il logout.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
-  if (!isClient || !isAuthenticated) {
+  // Show a loading screen while authentication status is being determined.
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -38,6 +54,18 @@ export default function SuperAdminDashboardPage() {
     );
   }
 
+  // If after loading, the user is still not a super-admin, show nothing or a redirecting message.
+  // The useEffect handles the actual redirect logic.
+  if (!isAuthenticated || userRole !== 'super-admin') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <ShieldAlert className="h-12 w-12 text-destructive" />
+        <p className="ml-3 text-lg text-muted-foreground">Accesso non autorizzato. Reindirizzamento...</p>
+      </div>
+    );
+  }
+
+  // Render the dashboard for the authenticated super-admin.
   return (
     <div className="main-app-container">
       <div className="main-app-content">
@@ -50,9 +78,9 @@ export default function SuperAdminDashboardPage() {
                 <p className="text-muted-foreground">Gestione completa delle risorse dell'applicazione.</p>
               </div>
             </div>
-            <Button onClick={handleLogout} variant="destructive" size="sm">
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
+            <Button onClick={handleLogout} variant="destructive" size="sm" disabled={isLoggingOut}>
+              {isLoggingOut ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <LogOut className="mr-2 h-4 w-4" />}
+              {isLoggingOut ? 'Disconnessione...' : 'Logout'}
             </Button>
           </header>
 
