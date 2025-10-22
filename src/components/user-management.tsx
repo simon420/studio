@@ -102,13 +102,13 @@ export default function UserManagement() {
             Scegliendo di riassegnare, i prodotti diventeranno di tua proprietà. Scegliendo di eliminare,
             sia l'utente che tutti i suoi prodotti verranno rimossi permanentemente.
           </div>
-          <AlertDialogFooter className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
             <AlertDialogCancel disabled={isDeleting}>Annulla</AlertDialogCancel>
             <Button
               variant="outline"
               onClick={() => handleConfirmDeletion('reassign')}
               disabled={isDeleting}
-              className="sm:col-start-2"
+              className="whitespace-nowrap"
             >
               {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Recycle className="mr-2" />}
               Riassegna Prodotti
@@ -117,6 +117,7 @@ export default function UserManagement() {
               variant="destructive"
               onClick={() => handleConfirmDeletion('delete')}
               disabled={isDeleting}
+              className="whitespace-nowrap"
             >
               {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2"/>}
               Elimina Tutto
