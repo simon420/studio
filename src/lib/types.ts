@@ -1,4 +1,6 @@
 // src/lib/types.ts
+import { Timestamp } from 'firebase/firestore';
+
 // Define the structure for a Product
 export type Product = {
   id: string; // Unique identifier (e.g., combination of serverId and code or a UUID)
@@ -26,7 +28,7 @@ export type AdminRequest = {
     email: string;
     password?: string; // Password is sent in plain text, temporarily. It must be secured via Firestore Rules.
     status: 'pending' | 'approved' | 'declined';
-    requestedAt: any; // Firestore Timestamp
+    requestedAt: Timestamp; // Firestore Timestamp
 }
 
 // Type for the notification system

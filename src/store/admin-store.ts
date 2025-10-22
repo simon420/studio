@@ -2,13 +2,14 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { db } from '@/lib/firebase';
-import { collection, doc, deleteDoc, query, where, onSnapshot, Unsubscribe, DocumentChange } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, where, onSnapshot, Unsubscribe, DocumentChange, Timestamp } from 'firebase/firestore';
 import type { AdminRequest } from '@/lib/types';
 import { useNotificationStore } from './notification-store';
 import { useAuthStore } from './auth-store';
 
 // Keep track of the real-time listener
 let adminRequestListener: Unsubscribe | null = null;
+let listenerAttachTime: number | null = null; // To track when the listener was attached
 
 interface AdminState {
   pendingRequests: AdminRequest[];
@@ -47,6 +48,7 @@ export const useAdminStore = create<AdminState>()(
         get().cleanupAdminListener();
 
         set({ isLoading: true });
+        listenerAttachTime = Date.now(); // Set the timestamp when the listener starts
 
         const q = query(
           collection(db, 'adminRequests'),
@@ -54,16 +56,16 @@ export const useAdminStore = create<AdminState>()(
         );
 
         adminRequestListener = onSnapshot(q, (snapshot) => {
-          const isInitialLoad = get().pendingRequests.length === 0 && snapshot.docChanges().length > 0;
-
           snapshot.docChanges().forEach((change: DocumentChange) => {
             const requestData = {
               id: change.doc.id,
               ...change.doc.data()
             } as AdminRequest;
 
-            // Notify only on new additions after the initial load
-            if (change.type === "added" && !isInitialLoad) {
+            const requestTimestamp = (requestData.requestedAt as Timestamp)?.toDate().getTime() || 0;
+
+            // Notify only for new requests that appeared after the listener was attached
+            if (change.type === "added" && listenerAttachTime && requestTimestamp > listenerAttachTime) {
               addNotification({
                 type: 'admin_request',
                 message: `Nuova richiesta admin da: ${requestData.email}`,
@@ -77,8 +79,8 @@ export const useAdminStore = create<AdminState>()(
           } as AdminRequest));
           
           requestsData.sort((a, b) => {
-            const dateA = a.requestedAt?.toDate ? a.requestedAt.toDate().getTime() : 0;
-            const dateB = b.requestedAt?.toDate ? b.requestedAt.toDate().getTime() : 0;
+            const dateA = (a.requestedAt as Timestamp)?.toDate().getTime() || 0;
+            const dateB = (b.requestedAt as Timestamp)?.toDate().getTime() || 0;
             return dateB - dateA;
           });
 
@@ -94,20 +96,23 @@ export const useAdminStore = create<AdminState>()(
             adminRequestListener();
             adminRequestListener = null;
         }
+        listenerAttachTime = null; // Reset timestamp on cleanup
         set({ pendingRequests: [], isLoading: true });
       },
 
       approveAdminRequest: async (requestId: string) => {
-        const { addNotification } = useNotificationStore.getState();
         const approvedData = await approveRequestApiCall(requestId);
         
-        addNotification({
+        useNotificationStore.getState().addNotification({
             type: 'user_approved',
             message: `L'utente admin ${approvedData.email} è stato approvato e creato.`,
         });
+        
+        // After approval, trigger a manual fetch of users in the user management store
+        // This ensures the user list is updated immediately.
+        useAuthStore.getState()._fetchUsersForStore(); // Assuming a function to trigger fetch exists
 
         // The onSnapshot listener will automatically remove the request from the list.
-        // No need for manual state update here.
       },
 
       declineAdminRequest: async (requestId: string) => {
@@ -120,6 +125,24 @@ export const useAdminStore = create<AdminState>()(
     { name: 'AdminStore' }
   )
 );
+
+// This function needs to be defined in user-management-store
+// For now, let's create a placeholder in auth-store to call it.
+// This is not ideal, but it's a quick fix to link the two stores.
+declare module '@/store/auth-store' {
+    interface AuthState {
+        _fetchUsersForStore: () => void;
+    }
+}
+useAuthStore.setState({
+    _fetchUsersForStore: () => {
+        // This dynamically imports and calls the fetchUsers function from the userManagementStore
+        import('@/store/user-management-store').then(store => {
+            store.useUserManagementStore.getState().fetchUsers();
+        });
+    }
+});
+
 
 // Subscribe to auth changes to manage the admin requests listener
 if (typeof window !== 'undefined') {
