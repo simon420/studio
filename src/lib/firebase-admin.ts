@@ -39,6 +39,11 @@ export function getAdminServices() {
       .replace(/^"|"$/g, '') // Rimuove le virgolette all'inizio e alla fine
       .replace(/\\n/g, '\n');
 
+    // DEBUG: Stampa la chiave privata per il debug
+    console.log('--- DEBUG PRIVATE KEY START ---');
+    console.log(privateKey);
+    console.log('--- DEBUG PRIVATE KEY END ---');
+
     const serviceAccount = {
       type: process.env.FIREBASE_TYPE,
       project_id: process.env.FIREBASE_PROJECT_ID,
