@@ -32,7 +32,7 @@ import { useAuthStore } from '@/store/auth-store';
 type DeletionAction = 'delete' | 'reassign';
 
 export default function UserManagement() {
-  const { users, isLoading, error, deleteAdminUserAndManageProducts, deleteUser } = useUserManagementStore();
+  const { users, isLoading, error, deleteAdminUserAndManageProducts, deleteUser, revokeUserSession } = useUserManagementStore();
   const { uid: currentSuperAdminUid } = useAuthStore();
   const { toast } = useToast();
   
@@ -57,8 +57,14 @@ export default function UserManagement() {
 
     try {
       if (userToDelete.role === 'admin') {
+        // First, revoke session to force logout
+        await revokeUserSession(userToDelete.uid);
+        // Then, manage products and delete user
         await deleteAdminUserAndManageProducts(userToDelete.uid, action as DeletionAction);
       } else {
+         // First, revoke session to force logout
+        await revokeUserSession(userToDelete.uid);
+        // Then delete the user
         await deleteUser(userToDelete.uid);
       }
       
@@ -84,7 +90,7 @@ export default function UserManagement() {
 
     if (userToDelete.role === 'admin') {
       return (
-        <AlertDialogContent className="sm:max-w-lg">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Gestisci Prodotti per {userToDelete.email}</AlertDialogTitle>
             <AlertDialogDescription>
@@ -102,9 +108,10 @@ export default function UserManagement() {
               variant="outline"
               onClick={() => handleConfirmDeletion('reassign')}
               disabled={isDeleting}
+              className="sm:col-start-2"
             >
               {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Recycle className="mr-2" />}
-              Riassegna Prodotti a te
+              Riassegna Prodotti
             </Button>
             <Button
               variant="destructive"
@@ -112,7 +119,7 @@ export default function UserManagement() {
               disabled={isDeleting}
             >
               {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash className="mr-2"/>}
-              Elimina Utente e Prodotti
+              Elimina Tutto
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
