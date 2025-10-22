@@ -1,12 +1,17 @@
 // src/app/api/approve-admin/route.ts
 import { NextResponse } from 'next/server';
 import { getAdminServices } from '@/lib/firebase-admin';
-import * as admin from 'firebase-admin'; // Still needed for type definitions like UserRecord
+import * as admin from 'firebase-admin';
 
 export async function POST(request: Request) {
-  // Use the centralized function to get admin services INSIDE the request handler.
+  // La chiamata a getAdminServices() viene eseguita QUI, all'interno della richiesta,
+  // per garantire che l'ambiente server sia completamente caricato.
   const { adminDb, adminAuth, error: adminInitializationError } = getAdminServices();
 
+  // Questo controllo è la nostra rete di sicurezza.
+  // 1. adminInitializationError: Verifica se c'è stato un errore esplicito durante l'inizializzazione (es. chiave di servizio mancante).
+  // 2. !adminDb || !adminAuth: Verifica che, anche in assenza di errori, abbiamo ottenuto istanze valide dei servizi.
+  // Se una di queste condizioni è vera, significa che l'Admin SDK non è pronto e l'operazione non può continuare.
   if (adminInitializationError || !adminDb || !adminAuth) {
     console.error('API Error: Firebase Admin SDK not initialized:', adminInitializationError);
     return NextResponse.json({ message: 'Errore di configurazione del server.' }, { status: 500 });
@@ -26,7 +31,6 @@ export async function POST(request: Request) {
     }
 
     const requestData = requestDoc.data();
-    // Use the password directly from the request, as it should be in plain text.
     if (!requestData || !requestData.email || !requestData.password) {
       return NextResponse.json({ message: 'Dati richiesta non validi (email o password mancanti).' }, { status: 400 });
     }
@@ -34,19 +38,16 @@ export async function POST(request: Request) {
     let userRecord: admin.auth.UserRecord;
 
     try {
-        // Attempt to create the user in Firebase Authentication
         userRecord = await adminAuth.createUser({
             email: requestData.email,
             password: requestData.password,
-            emailVerified: true, // Automatically verify the email for approved admins
+            emailVerified: true,
             disabled: false,
         });
         console.log(`Successfully created new admin user in Auth with UID: ${userRecord.uid}`);
     } catch (error: any) {
         if (error.code === 'auth/email-already-exists') {
-            console.warn(`User ${requestData.email} already exists in Auth. Recovering user record to proceed.`);
-            // If the user already exists in Auth (e.g., from a failed prior attempt),
-            // get their record so we can still create their Firestore document.
+            console.warn(`User ${requestData.email} already exists in Auth. Recovering user record.`);
             userRecord = await adminAuth.getUserByEmail(requestData.email);
         } else {
             console.error('Error creating user in Firebase Auth:', error);
@@ -54,7 +55,6 @@ export async function POST(request: Request) {
         }
     }
 
-    // Now, create the user's document in the 'users' collection with the 'admin' role.
     const userDocRef = adminDb.collection('users').doc(userRecord.uid);
     await userDocRef.set({
       uid: userRecord.uid,
@@ -63,7 +63,6 @@ export async function POST(request: Request) {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Finally, delete the pending request.
     await requestDocRef.delete();
 
     return NextResponse.json({ message: 'Utente approvato con successo.', uid: userRecord.uid }, { status: 200 });
