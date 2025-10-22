@@ -1,10 +1,43 @@
 // src/app/api/approve-admin/route.ts
 import { NextResponse } from 'next/server';
-import { adminDb, adminInitializationError } from '@/lib/firebase-admin';
+import { adminDb as preInitializedAdminDb, adminInitializationError as preInitializedError } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 
+// Helper function to initialize admin app if not already done
+function ensureAdminInitialized() {
+  if (admin.apps.length > 0) {
+    return {
+      adminDb: admin.firestore(),
+      adminAuth: admin.auth(),
+      error: null,
+    };
+  }
+
+  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountEnv) {
+    return { adminDb: null, adminAuth: null, error: 'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.' };
+  }
+
+  try {
+    const serviceAccount = JSON.parse(serviceAccountEnv);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    console.log('Firebase Admin SDK initialized on-demand in API route.');
+    return {
+      adminDb: admin.firestore(),
+      adminAuth: admin.auth(),
+      error: null,
+    };
+  } catch (e: any) {
+    return { adminDb: null, adminAuth: null, error: `Error initializing Firebase Admin SDK on-demand: ${e.message}` };
+  }
+}
+
 export async function POST(request: Request) {
-  if (adminInitializationError) {
+  const { adminDb, adminAuth, error: adminInitializationError } = ensureAdminInitialized();
+
+  if (adminInitializationError || !adminDb || !adminAuth) {
     console.error('API Error: Firebase Admin SDK not initialized:', adminInitializationError);
     return NextResponse.json({ message: 'Errore di configurazione del server.' }, { status: 500 });
   }
@@ -13,10 +46,6 @@ export async function POST(request: Request) {
     const { requestId } = await request.json();
     if (!requestId) {
       return NextResponse.json({ message: 'ID richiesta mancante.' }, { status: 400 });
-    }
-    
-    if (!adminDb) {
-         throw new Error("Admin DB not available");
     }
 
     const requestDocRef = adminDb.collection('adminRequests').doc(requestId);
@@ -27,7 +56,6 @@ export async function POST(request: Request) {
     }
 
     const requestData = requestDoc.data();
-    // Use plain-text 'password' from the request.
     if (!requestData || !requestData.email || !requestData.password) {
       return NextResponse.json({ message: 'Dati richiesta non validi (email o password mancanti).' }, { status: 400 });
     }
@@ -35,29 +63,23 @@ export async function POST(request: Request) {
     let userRecord: admin.auth.UserRecord;
 
     try {
-        // User should not exist, so we create them. If they do, something is wrong.
-        userRecord = await admin.auth().createUser({
+        userRecord = await adminAuth.createUser({
             email: requestData.email,
-            password: requestData.password, // Use the plain-text password from the request
+            password: requestData.password,
             emailVerified: true,
             disabled: false,
         });
         console.log(`Successfully created new admin user in Auth with UID: ${userRecord.uid}`);
-
     } catch (error: any) {
-        // If user already exists in Auth, that's an inconsistent state.
-        // We log it, but for robustness, we can try to find them and assign the role.
         if (error.code === 'auth/email-already-exists') {
             console.warn(`User ${requestData.email} already exists in Auth. Attempting to recover and assign admin role.`);
-            userRecord = await admin.auth().getUserByEmail(requestData.email);
+            userRecord = await adminAuth.getUserByEmail(requestData.email);
         } else {
-             // For other errors (e.g., weak-password), we should fail.
             console.error('Error creating user in Firebase Auth:', error);
             return NextResponse.json({ message: error.message || "Impossibile creare l'utente in Firebase Auth." }, { status: 500 });
         }
     }
 
-    // Now, create their document in the 'users' collection to assign the role
     const userDocRef = adminDb.collection('users').doc(userRecord.uid);
     await userDocRef.set({
       uid: userRecord.uid,
@@ -66,14 +88,12 @@ export async function POST(request: Request) {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Finally, delete the original request (which contains the plain-text password)
     await requestDocRef.delete();
 
     return NextResponse.json({ message: 'Utente approvato con successo.', uid: userRecord.uid }, { status: 200 });
 
   } catch (error: any) {
     console.error('Errore approvazione richiesta admin:', error);
-    // Provide a more specific error if available
     const errorMessage = error.message || 'Si è verificato un errore del server.';
     const errorCode = error.code || 'UNKNOWN_ERROR';
     return NextResponse.json({ message: errorMessage, code: errorCode }, { status: 500 });
