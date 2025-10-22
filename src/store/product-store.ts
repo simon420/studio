@@ -17,7 +17,7 @@ function getShard(productCode: number): { shardId: string; shardDb: Firestore } 
 
 // Keep track of unsubscribe functions for real-time listeners
 let productListeners: Unsubscribe[] = [];
-let listenerAttachTime: number | null = null; // To track when the listener was attached
+let isInitialLoad = true; // Flag to differentiate initial data load from subsequent changes
 
 interface ProductState {
   searchTerm: string;
@@ -49,66 +49,72 @@ export const useProductStore = create<ProductState>()(
       },
       
       listenToAllProductShards: () => {
-        const { isAuthenticated, isLoading: authIsLoading } = useAuthStore.getState();
-        const { addNotification } = useNotificationStore.getState();
+        const { isAuthenticated, isLoading: authIsLoading, uid: currentUserId } = useAuthStore.getState();
 
         if (authIsLoading || !isAuthenticated) {
           get().clearSearchAndResults();
           return;
         }
 
-        // Clean up any existing listeners before starting new ones
         get().cleanupProductListeners();
-        listenerAttachTime = Date.now(); // Set the timestamp when the listener starts
-
+        isInitialLoad = true;
         const productsByShard: { [key: string]: Product[] } = {};
 
-        const updateCombinedProducts = () => {
-          const allProducts = Object.values(productsByShard).flat();
-          set({ products: allProducts });
-          get().filterProducts();
+        const updateAndNotify = (newProductList: Product[]) => {
+            const { addNotification } = useNotificationStore.getState();
+            const oldProducts = get().products;
+            
+            // Do not notify on the very first data load
+            if (!isInitialLoad) {
+                const oldProductMap = new Map(oldProducts.map(p => [p.id, p]));
+                const newProductMap = new Map(newProductList.map(p => [p.id, p]));
+                
+                // Check for added/updated products
+                newProductList.forEach(newProduct => {
+                    const oldProduct = oldProductMap.get(newProduct.id);
+                    if (!oldProduct && newProduct.addedByUid !== currentUserId) {
+                        addNotification({
+                            type: 'product_added',
+                            message: `Nuovo prodotto: "${newProduct.name}" aggiunto da ${newProduct.addedByEmail}.`,
+                        });
+                    } else if (oldProduct && JSON.stringify(oldProduct) !== JSON.stringify(newProduct) && newProduct.addedByUid !== currentUserId) {
+                        addNotification({
+                            type: 'product_updated',
+                            message: `Prodotto "${newProduct.name}" aggiornato da ${newProduct.addedByEmail}.`,
+                        });
+                    }
+                });
+        
+                // Check for deleted products
+                oldProducts.forEach(oldProduct => {
+                    if (!newProductMap.has(oldProduct.id) && oldProduct.addedByUid !== currentUserId) {
+                        addNotification({
+                            type: 'product_deleted',
+                            message: `Prodotto "${oldProduct.name}" eliminato.`,
+                        });
+                    }
+                });
+            }
+            
+            set({ products: newProductList });
+            get().filterProducts();
+        
+            if (isInitialLoad) {
+                isInitialLoad = false; // Mark initial load as complete
+            }
         };
+
+        const updateCombinedProducts = () => {
+            const allProducts = Object.values(productsByShard).flat();
+            updateAndNotify(allProducts);
+        };
+        
 
         productListeners = shardIds.map(shardId => {
           const shardDb = shards[shardId as keyof typeof shards];
           const productCollection = collection(shardDb, 'products');
 
           const unsubscribe = onSnapshot(productCollection, (snapshot) => {
-             snapshot.docChanges().forEach((change: DocumentChange) => {
-                const productData = {
-                    id: change.doc.id,
-                    ...change.doc.data(),
-                    serverId: shardId
-                } as Product;
-                
-                const changeTimestamp = change.doc.createTime.toDate().getTime();
-
-                // Notify only for changes that occurred after the listener was attached
-                if (listenerAttachTime && changeTimestamp > listenerAttachTime) {
-                  if (change.type === "added") {
-                       addNotification({
-                           type: 'product_added',
-                           message: `Nuovo prodotto aggiunto da ${productData.addedByEmail}: "${productData.name}"`,
-                       });
-                  }
-                  if (change.type === "modified") {
-                       addNotification({
-                           type: 'product_updated',
-                           message: `Prodotto "${productData.name}" aggiornato da ${productData.addedByEmail}.`,
-                       });
-                  }
-                  if (change.type === "removed") {
-                      // For deleted products, we might need to find its data before it's gone
-                      // This implementation will show the name if available, otherwise a generic message
-                       addNotification({
-                           type: 'product_deleted',
-                           message: `Prodotto "${productData.name || 'sconosciuto'}" eliminato da ${productData.addedByEmail}.`,
-                       });
-                  }
-                }
-             });
-
-
             const fullProductList: Product[] = snapshot.docs.map(docSnap => {
               const data = docSnap.data();
               return {
@@ -134,7 +140,6 @@ export const useProductStore = create<ProductState>()(
       cleanupProductListeners: () => {
         productListeners.forEach(unsubscribe => unsubscribe());
         productListeners = [];
-        listenerAttachTime = null;
       },
 
 
@@ -147,7 +152,6 @@ export const useProductStore = create<ProductState>()(
         const { shardId, shardDb } = getShard(productData.code);
         const productsRef = collection(shardDb, 'products');
       
-        // Check for duplicate code within the target shard
         const q = query(productsRef, where("code", "==", productData.code));
         const querySnapshot = await getDocs(q);
       
@@ -161,9 +165,8 @@ export const useProductStore = create<ProductState>()(
           addedByEmail: email,
         };
       
-        // Use a batch write to ensure atomicity
-        const batch = writeBatch(db); // Main DB for the map
-        const shardBatch = writeBatch(shardDb); // Shard DB for the product
+        const batch = writeBatch(db); 
+        const shardBatch = writeBatch(shardDb);
       
         const newProductRef = doc(collection(shardDb, 'products'));
         shardBatch.set(newProductRef, productDataToSave);
@@ -173,8 +176,6 @@ export const useProductStore = create<ProductState>()(
       
         await shardBatch.commit();
         await batch.commit();
-
-        // No need to manually add to state, onSnapshot will handle it.
       },
 
       updateProductInStoreAndFirestore: async (productId, serverId, updatedData) => {
@@ -195,9 +196,7 @@ export const useProductStore = create<ProductState>()(
             throw new Error("L'amministratore può aggiornare solo i propri prodotti.");
         }
 
-        await updateDoc(productDocRef, updatedData);
-
-        // No need to manually update state, onSnapshot will handle it.
+        await updateDoc(productDocRef, { ...updatedData, addedByUid: uid, addedByEmail: useAuthStore.getState().email });
       },
 
       deleteProductFromStoreAndFirestore: async (productId, serverId) => {
@@ -216,7 +215,6 @@ export const useProductStore = create<ProductState>()(
             throw new Error("L'amministratore può eliminare solo i propri prodotti.");
         }
 
-        // Use batch to delete from shard and from map
         const shardBatch = writeBatch(shardDb);
         const mainDbBatch = writeBatch(db);
 
@@ -228,12 +226,10 @@ export const useProductStore = create<ProductState>()(
 
         await shardBatch.commit();
         await mainDbBatch.commit();
-
-        // No need to manually update state, onSnapshot will handle it.
       },
 
       superAdminUpdateProduct: async (productId, serverId, updatedData) => {
-        const { userRole, isAuthenticated } = useAuthStore.getState();
+        const { userRole, isAuthenticated, uid, email } = useAuthStore.getState();
         if (!isAuthenticated || userRole !== 'super-admin') {
           throw new Error("Solo i super-amministratori possono eseguire questa azione.");
         }
@@ -244,9 +240,7 @@ export const useProductStore = create<ProductState>()(
         }
 
         const productDocRef = doc(shardDb, 'products', productId);
-        await updateDoc(productDocRef, updatedData);
-
-        // No need to manually update state, onSnapshot will handle it.
+        await updateDoc(productDocRef, { ...updatedData, addedByUid: uid, addedByEmail: email });
       },
 
       superAdminDeleteProduct: async (productId, serverId) => {
@@ -271,8 +265,6 @@ export const useProductStore = create<ProductState>()(
 
         await shardBatch.commit();
         await mainDbBatch.commit();
-
-        // No need to manually update state, onSnapshot will handle it.
       },
 
       filterProducts: () => {
@@ -310,27 +302,23 @@ export const useProductStore = create<ProductState>()(
 
 
 if (typeof window !== 'undefined') {
-  // Subscribe to auth changes to manage product listeners
   useAuthStore.subscribe(
     (currentAuthState, previousAuthState) => {
       const productStore = useProductStore.getState();
       const wasAuthenticated = previousAuthState.isAuthenticated;
       const isAuthenticated = currentAuthState.isAuthenticated;
 
-      // User logs in
       if (!wasAuthenticated && isAuthenticated) {
         console.log("ProductStore: Utente autenticato. Avvio listener prodotti.");
         productStore.listenToAllProductShards();
       }
-      // User logs out
       else if (wasAuthenticated && !isAuthenticated) {
         console.log("ProductStore: Utente disconnesso. Pulisco prodotti e listeners.");
-        productStore.clearSearchAndResults(); // This also cleans up listeners
+        productStore.clearSearchAndResults();
       }
     }
   );
   
-  // Initial check on page load
   const initialAuth = useAuthStore.getState();
   if (initialAuth.isAuthenticated && !initialAuth.isLoading) {
        console.log("ProductStore: Check iniziale, utente autenticato. Avvio listener.");
