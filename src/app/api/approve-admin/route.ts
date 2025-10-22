@@ -74,9 +74,12 @@ export async function POST(request: Request) {
         if (error.code === 'auth/email-already-exists') {
             console.warn(`User ${requestData.email} already exists in Auth. Attempting to recover and assign admin role.`);
             userRecord = await adminAuth.getUserByEmail(requestData.email);
+            // If the user already exists, we might want to just proceed to create the firestore doc
+            // and don't need to throw an error. This makes the approval process idempotent.
         } else {
             console.error('Error creating user in Firebase Auth:', error);
-            return NextResponse.json({ message: error.message || "Impossibile creare l'utente in Firebase Auth." }, { status: 500 });
+            // This is a more specific error that will be thrown to the client
+            throw new Error(error.message || "Impossibile creare l'utente in Firebase Auth.");
         }
     }
 
