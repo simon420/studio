@@ -1,41 +1,11 @@
 // src/app/api/approve-admin/route.ts
 import { NextResponse } from 'next/server';
-import { adminDb as preInitializedAdminDb, adminInitializationError as preInitializedError } from '@/lib/firebase-admin';
-import * as admin from 'firebase-admin';
-
-// Helper function to initialize admin app if not already done
-function ensureAdminInitialized() {
-  if (admin.apps.length > 0) {
-    return {
-      adminDb: admin.firestore(),
-      adminAuth: admin.auth(),
-      error: null,
-    };
-  }
-
-  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!serviceAccountEnv) {
-    return { adminDb: null, adminAuth: null, error: 'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.' };
-  }
-
-  try {
-    const serviceAccount = JSON.parse(serviceAccountEnv);
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-    console.log('Firebase Admin SDK initialized on-demand in API route.');
-    return {
-      adminDb: admin.firestore(),
-      adminAuth: admin.auth(),
-      error: null,
-    };
-  } catch (e: any) {
-    return { adminDb: null, adminAuth: null, error: `Error initializing Firebase Admin SDK on-demand: ${e.message}` };
-  }
-}
+import { getAdminServices } from '@/lib/firebase-admin';
+import * as admin from 'firebase-admin'; // Still needed for type definitions like UserRecord
 
 export async function POST(request: Request) {
-  const { adminDb, adminAuth, error: adminInitializationError } = ensureAdminInitialized();
+  // Use the centralized function to get admin services.
+  const { adminDb, adminAuth, error: adminInitializationError } = getAdminServices();
 
   if (adminInitializationError || !adminDb || !adminAuth) {
     console.error('API Error: Firebase Admin SDK not initialized:', adminInitializationError);
@@ -56,6 +26,7 @@ export async function POST(request: Request) {
     }
 
     const requestData = requestDoc.data();
+    // Use the password directly from the request, as it should be in plain text.
     if (!requestData || !requestData.email || !requestData.password) {
       return NextResponse.json({ message: 'Dati richiesta non validi (email o password mancanti).' }, { status: 400 });
     }
@@ -63,26 +34,27 @@ export async function POST(request: Request) {
     let userRecord: admin.auth.UserRecord;
 
     try {
+        // Attempt to create the user in Firebase Authentication
         userRecord = await adminAuth.createUser({
             email: requestData.email,
             password: requestData.password,
-            emailVerified: true,
+            emailVerified: true, // Automatically verify the email for approved admins
             disabled: false,
         });
         console.log(`Successfully created new admin user in Auth with UID: ${userRecord.uid}`);
     } catch (error: any) {
         if (error.code === 'auth/email-already-exists') {
-            console.warn(`User ${requestData.email} already exists in Auth. Attempting to recover and assign admin role.`);
+            console.warn(`User ${requestData.email} already exists in Auth. Recovering user record to proceed.`);
+            // If the user already exists in Auth (e.g., from a failed prior attempt),
+            // get their record so we can still create their Firestore document.
             userRecord = await adminAuth.getUserByEmail(requestData.email);
-            // If the user already exists, we might want to just proceed to create the firestore doc
-            // and don't need to throw an error. This makes the approval process idempotent.
         } else {
             console.error('Error creating user in Firebase Auth:', error);
-            // This is a more specific error that will be thrown to the client
             throw new Error(error.message || "Impossibile creare l'utente in Firebase Auth.");
         }
     }
 
+    // Now, create the user's document in the 'users' collection with the 'admin' role.
     const userDocRef = adminDb.collection('users').doc(userRecord.uid);
     await userDocRef.set({
       uid: userRecord.uid,
@@ -91,6 +63,7 @@ export async function POST(request: Request) {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    // Finally, delete the pending request.
     await requestDocRef.delete();
 
     return NextResponse.json({ message: 'Utente approvato con successo.', uid: userRecord.uid }, { status: 200 });

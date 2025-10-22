@@ -1,37 +1,42 @@
 // src/lib/firebase-admin.ts
 import * as admin from 'firebase-admin';
 
-let adminDb: admin.firestore.Firestore | null = null;
-let adminInitializationError: string | null = null; 
-// let adminAuth: admin.auth.Auth | null = null; // Admin Auth SDK not used for client-side Firebase Auth flows
-
-if (!admin.apps.length) {
-  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY; // Ensure this is set in your Vercel/server environment
-  if (!serviceAccountEnv) {
-    adminInitializationError = 'FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.';
-    console.error(`CRITICAL: ${adminInitializationError} This is required for server-side admin operations.`);
-  } else {
-    try {
-      const serviceAccount = JSON.parse(serviceAccountEnv);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-        // databaseURL: `https://${process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID}.firebaseio.com` // If using Realtime Database
-      });
-      adminDb = admin.firestore();
-      // adminAuth = admin.auth(); 
-      console.log('Firebase Admin SDK initialized successfully.');
-    } catch (error: any) {
-      adminInitializationError = `Error initializing Firebase Admin SDK: ${error.message}. Ensure FIREBASE_SERVICE_ACCOUNT_KEY is valid JSON.`;
-      console.error(`CRITICAL: ${adminInitializationError}`);
-    }
+// This function ensures the Firebase Admin SDK is initialized and returns its services.
+// It's designed to be idempotent, meaning it will only initialize the app once.
+export function getAdminServices() {
+  if (admin.apps.length > 0) {
+    return {
+      adminDb: admin.firestore(),
+      adminAuth: admin.auth(),
+      error: null,
+    };
   }
-} else {
-  // If already initialized (e.g. HMR), get the default app's services
-  adminDb = admin.app().firestore();
-  // adminAuth = admin.app().auth();
-  console.log('Firebase Admin SDK already initialized. Using existing instance.');
-}
 
-// Export adminDb for server-side Firestore access (e.g., Cloud Functions, API routes run on server)
-// Export adminInitializationError to allow server-side components/routes to check initialization status
-export { adminDb, adminInitializationError /*, adminAuth */ };
+  const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!serviceAccountEnv) {
+    const error = 'CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.';
+    console.error(error);
+    return { adminDb: null, adminAuth: null, error };
+  }
+
+  try {
+    // We need to parse the JSON string from the environment variable.
+    const serviceAccount = JSON.parse(serviceAccountEnv);
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount),
+    });
+    
+    console.log('Firebase Admin SDK initialized successfully in getAdminServices.');
+    
+    return {
+      adminDb: admin.firestore(),
+      adminAuth: admin.auth(),
+      error: null,
+    };
+  } catch (e: any) {
+    const error = `Error initializing Firebase Admin SDK: ${e.message}. Ensure the service account key is a valid JSON.`;
+    console.error(error);
+    return { adminDb: null, adminAuth: null, error };
+  }
+}
