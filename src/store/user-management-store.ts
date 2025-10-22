@@ -49,7 +49,7 @@ export const useUserManagementStore = create<UserManagementState>()(
           const q = query(collection(db, 'users'));
 
           userListener = onSnapshot(q, (snapshot) => {
-              const { addNotification, ...authStore } = useNotificationStore.getState();
+              const { addNotification } = useNotificationStore.getState();
 
               snapshot.docChanges().forEach((change: DocumentChange) => {
                   const userData = change.doc.data() as UserFirestoreData;
@@ -77,10 +77,6 @@ export const useUserManagementStore = create<UserManagementState>()(
               } as ClientUser));
               
               set({ users: usersData, isLoading: false });
-
-              // Verify the current user's validity after the user list is updated
-              useAuthStore.getState().verifyCurrentUser();
-
           }, (error) => {
               console.error("Errore nel listener degli utenti:", error);
               set({ error: error.message, isLoading: false });

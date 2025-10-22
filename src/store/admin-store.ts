@@ -6,7 +6,6 @@ import { collection, doc, deleteDoc, query, where, onSnapshot, Unsubscribe, Docu
 import type { AdminRequest } from '@/lib/types';
 import { useNotificationStore } from './notification-store';
 import { useAuthStore } from './auth-store';
-import { useUserManagementStore } from './user-management-store'; // Import user management store
 
 // Keep track of the real-time listener
 let adminRequestListener: Unsubscribe | null = null;

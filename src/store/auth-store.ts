@@ -12,7 +12,7 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { UserRole, UserFirestoreData } from '@/lib/types';
-import { useUserManagementStore } from './user-management-store';
+// Removed: import { useUserManagementStore } from './user-management-store';
 
 let sessionListener: Unsubscribe | null = null;
 
@@ -31,7 +31,6 @@ interface AuthState {
   _updateAuthData: (user: FirebaseUser | null) => Promise<void>; // Internal helper, now async
   _fetchUserData: (uid: string) => Promise<UserFirestoreData | null>; // Fetches the full user document
   _cleanupSessionListener: () => void;
-  verifyCurrentUser: () => void;
 }
 
 const initialAuthState = {
@@ -169,7 +168,8 @@ export const useAuthStore = create<AuthState>()(
           try {
             const userData = await get()._fetchUserData(fbUser.uid);
 
-            if (!userData || userData.role === 'guest') {
+            if (!userData) { // If user doc doesn't exist, they shouldn't be logged in
+              console.warn(`User document not found for UID ${fbUser.uid}. Forcing logout.`);
               await get().logout();
             } else {
               set({
@@ -208,24 +208,6 @@ export const useAuthStore = create<AuthState>()(
           set({ ...initialAuthState, isLoading: false });
         }
       },
-      
-      verifyCurrentUser: () => {
-        const { uid, isAuthenticated } = get();
-        if (!isAuthenticated || !uid) return;
-
-        // Since we have a real-time listener on the user's own document,
-        // we can rely on that for immediate revocation.
-        // We can double-check against the full list from the user management store
-        // if we want an extra layer of security when the list is updated.
-        const allUsers = useUserManagementStore.getState().users;
-        if (allUsers.length > 0) {
-            const userExists = allUsers.some(user => user.uid === uid);
-            if (!userExists) {
-                console.log("L'utente non è più nella lista degli utenti validi. Logout forzato.");
-                get().logout();
-            }
-        }
-      }
     }),
     { name: "AuthStore" } 
   )

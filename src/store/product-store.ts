@@ -32,7 +32,7 @@ interface ProductState {
   clearSearchAndResults: () => void;
   listenToAllProductShards: () => void;
   cleanupProductListeners: () => void;
-  superAdminUpdateProduct: (productId: string, serverId: string, updatedData: Partial<Pick<Product, 'name' | 'price'>>) => Promise<void>;
+  superAdminUpdateProduct: (productId: string, serverId: string, updatedData: Partial<Pick<Product, 'name' | 'price' | 'addedByUid' | 'addedByEmail'>>) => Promise<void>;
   superAdminDeleteProduct: (productId: string, serverId: string) => Promise<void>;
 }
 
