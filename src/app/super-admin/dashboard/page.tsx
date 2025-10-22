@@ -149,7 +149,6 @@ export default function SuperAdminDashboardPage() {
                     </CardContent>
                 </Card>
               </TabsContent>
-
             </Tabs>
           </main>
         </div>
