@@ -54,7 +54,7 @@ export default function SuperAdminLoginPage() {
   }
 
   return (
-    <div className="login-page-container flex min-h-screen items-center justify-center p-4">
+    <div className="super-admin-page-container flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-md shadow-2xl bg-card/80 backdrop-blur-md rounded-xl">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary/20 text-primary">

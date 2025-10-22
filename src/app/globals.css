@@ -179,6 +179,42 @@ html {
   z-index: 3;
 }
 
+/* Super Admin Page Specific Styles */
+.super-admin-page-container {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: hsl(220, 15%, 15%); /* Dark, professional blue-gray */
+}
+
+.super-admin-page-container::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    -45deg, 
+    hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.1), 
+    hsla(var(--accent-h), var(--accent-s), 20%, 0.15), 
+    hsla(var(--primary-h), var(--primary-s), 10%, 0.1)
+  );
+  background-size: 400% 400%;
+  animation: loginGradientAnimation 25s ease infinite; /* Slightly slower animation */
+  z-index: 1;
+}
+
+/* Make sure card is above the background effect */
+.super-admin-page-container .card {
+  position: relative;
+  z-index: 2;
+}
+
+
 /* Main Application Page Styles */
 .main-app-container {
   position: relative;
@@ -261,4 +297,5 @@ html {
 }
 
     
+
 
