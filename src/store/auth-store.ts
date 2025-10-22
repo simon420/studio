@@ -1,4 +1,3 @@
-
 // src/store/auth-store.ts
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
@@ -37,20 +36,20 @@ const initialAuthState = {
   isLoading: true, // Start in loading state until first auth check
 };
 
-// API call to encrypt password on the server
-async function encryptPassword(password: string): Promise<string> {
-    const response = await fetch('/api/encrypt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
-    });
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Password encryption failed.');
-    }
-    const { hashedPassword } = await response.json();
-    return hashedPassword;
-}
+// API call to encrypt password on the server - NO LONGER NEEDED for admin requests
+// async function encryptPassword(password: string): Promise<string> {
+//     const response = await fetch('/api/encrypt', {
+//         method: 'POST',
+//         headers: { 'Content-Type': 'application/json' },
+//         body: JSON.stringify({ password }),
+//     });
+//     if (!response.ok) {
+//         const error = await response.json();
+//         throw new Error(error.message || 'Password encryption failed.');
+//     }
+//     const { hashedPassword } = await response.json();
+//     return hashedPassword;
+// }
 
 
 export const useAuthStore = create<AuthState>()(
@@ -62,19 +61,9 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          const role = await get()._fetchUserRole(userCredential.user.uid);
-          // Manually block login if role is 'pending'
-          if (role === 'pending') {
-            await signOut(auth); // Sign out the user immediately
-            throw new Error('Il tuo account admin è in attesa di approvazione.');
-          }
           // onAuthStateChanged will handle setting the rest of the state
         } catch (error: any) {
           set({ isLoading: false });
-          // If it's our custom pending error, re-throw it with a specific message
-          if (error.message.includes('in attesa di approvazione')) {
-             throw error;
-          }
           console.error('Firebase login error:', error);
           throw error;
         }
@@ -87,7 +76,6 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
 
         try {
-          // SECURITY FIX: Check if an admin request for this email already exists
            const adminRequestQuery = query(collection(db, 'adminRequests'), where('email', '==', email), where('status', '==', 'pending'));
            const existingAdminRequests = await getDocs(adminRequestQuery);
            if (!existingAdminRequests.empty) {
@@ -130,13 +118,11 @@ export const useAuthStore = create<AuthState>()(
                  throw new Error('Una richiesta per questa email è già in attesa di approvazione.');
              }
              
-             // 3. Encrypt the password on the server
-             const hashedPassword = await encryptPassword(password);
-
-             // 4. Save the request to Firestore `adminRequests` collection
+             // 3. Save the request to Firestore `adminRequests` collection with the PLAIN-TEXT password.
+             // Firestore security rules MUST protect this collection.
              await addDoc(collection(db, 'adminRequests'), {
                  email,
-                 hashedPassword, // Store the encrypted password
+                 password, // Storing plain-text password temporarily.
                  status: 'pending',
                  requestedAt: serverTimestamp(),
              });
@@ -167,11 +153,12 @@ export const useAuthStore = create<AuthState>()(
           const userDocSnap = await getDoc(userDocRef);
           if (userDocSnap.exists()) {
             const userData = userDocSnap.data() as UserFirestoreData;
-            // The logic to block 'pending' users is now handled during login
             return userData.role;
           } else {
-            console.warn('Documento utente non trovato in Firestore per UID:', uid, "- l'utente potrebbe non avere un ruolo assegnato.");
-            return 'guest'; // Return 'guest' if no user doc, indicates a problem
+             // Check if there is a pending admin request. If so, it's a critical state.
+             // For now, treat as guest and deny access. The login logic should prevent this.
+            console.warn('Documento utente non trovato in Firestore per UID:', uid, "- l'utente potrebbe non avere un ruolo assegnato o essere in attesa di approvazione.");
+            return 'guest'; 
           }
         } catch (error) {
           console.error('Errore nel recupero del ruolo utente da Firestore:', error);
@@ -186,6 +173,9 @@ export const useAuthStore = create<AuthState>()(
             const role = await get()._fetchUserRole(fbUser.uid);
 
             if (role === 'guest') {
+              // This is a critical case. User is authenticated with Firebase but has no role document.
+              // This can happen if an admin request is pending but not approved.
+              // We sign them out to prevent unauthorized access as a 'guest'.
               await signOut(auth);
               set({ ...initialAuthState, isLoading: false });
             } else {
@@ -200,6 +190,7 @@ export const useAuthStore = create<AuthState>()(
             }
           } catch (error) {
             console.error("Errore durante il recupero del ruolo in _updateAuthData:", error);
+            await signOut(auth); // Sign out on error to be safe
             set({ ...initialAuthState, isLoading: false });
           }
         } else {
@@ -219,5 +210,3 @@ if (typeof window !== 'undefined' && auth) {
     useAuthStore.setState({ ...initialAuthState, isLoading: false });
   });
 }
-
-    

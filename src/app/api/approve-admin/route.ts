@@ -1,4 +1,3 @@
-
 // src/app/api/approve-admin/route.ts
 import { NextResponse } from 'next/server';
 import { adminDb, adminInitializationError } from '@/lib/firebase-admin';
@@ -28,34 +27,37 @@ export async function POST(request: Request) {
     }
 
     const requestData = requestDoc.data();
-    if (!requestData || !requestData.email || !requestData.hashedPassword) {
-      return NextResponse.json({ message: 'Dati richiesta non validi.' }, { status: 400 });
+    // Use plain-text 'password' from the request.
+    if (!requestData || !requestData.email || !requestData.password) {
+      return NextResponse.json({ message: 'Dati richiesta non validi (email o password mancanti).' }, { status: 400 });
     }
     
     let userRecord: admin.auth.UserRecord;
 
     try {
-        // Check if user already exists
-        userRecord = await admin.auth().getUserByEmail(requestData.email);
-        console.log(`User ${requestData.email} already exists in Auth. UID: ${userRecord.uid}. Proceeding to create Firestore doc.`);
+        // User should not exist, so we create them. If they do, something is wrong.
+        userRecord = await admin.auth().createUser({
+            email: requestData.email,
+            password: requestData.password, // Use the plain-text password from the request
+            emailVerified: true,
+            disabled: false,
+        });
+        console.log(`Successfully created new admin user in Auth with UID: ${userRecord.uid}`);
+
     } catch (error: any) {
-        if (error.code === 'auth/user-not-found') {
-            // User does not exist, so create them
-            console.log(`User ${requestData.email} not found in Auth. Creating new user.`);
-            userRecord = await admin.auth().createUser({
-                email: requestData.email,
-                password: requestData.hashedPassword, // SECURITY: This is insecure. The password should be sent from the client.
-                emailVerified: true,
-                disabled: false,
-            });
+        // If user already exists in Auth, that's an inconsistent state.
+        // We log it, but for robustness, we can try to find them and assign the role.
+        if (error.code === 'auth/email-already-exists') {
+            console.warn(`User ${requestData.email} already exists in Auth. Attempting to recover and assign admin role.`);
+            userRecord = await admin.auth().getUserByEmail(requestData.email);
         } else {
-            // A different kind of auth error occurred, re-throw it.
-            console.error('Error checking for user in Firebase Auth:', error);
-            throw error;
+             // For other errors (e.g., weak-password), we should fail.
+            console.error('Error creating user in Firebase Auth:', error);
+            return NextResponse.json({ message: error.message || "Impossibile creare l'utente in Firebase Auth." }, { status: 500 });
         }
     }
 
-    // Now, create their document in the 'users' collection
+    // Now, create their document in the 'users' collection to assign the role
     const userDocRef = adminDb.collection('users').doc(userRecord.uid);
     await userDocRef.set({
       uid: userRecord.uid,
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
-    // Finally, delete the original request
+    // Finally, delete the original request (which contains the plain-text password)
     await requestDocRef.delete();
 
     return NextResponse.json({ message: 'Utente approvato con successo.', uid: userRecord.uid }, { status: 200 });

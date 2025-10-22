@@ -24,7 +24,7 @@ export type UserFirestoreData = {
 export type AdminRequest = {
     id: string;
     email: string;
-    hashedPassword?: string; // Password is now stored hashed in the request
+    password?: string; // Password is sent in plain text, temporarily. It must be secured via Firestore Rules.
     status: 'pending' | 'approved' | 'declined';
     requestedAt: any; // Firestore Timestamp
 }
@@ -32,5 +32,3 @@ export type AdminRequest = {
 
 // SessionPayload is no longer needed with Firebase Auth handling sessions.
 // If you pass ID tokens to backend, you might define a type for the decoded token.
-
-    
