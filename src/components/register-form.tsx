@@ -76,6 +76,7 @@ export default function RegisterForm() {
                 title: 'Richiesta Inviata',
                 description: 'La tua richiesta di registrazione come admin è stata inviata per approvazione.',
             });
+            // Send notification to super-admin about the new request
             addNotification({
                 type: 'admin_request',
                 message: `Nuova richiesta admin da: ${values.email}`,
@@ -88,6 +89,7 @@ export default function RegisterForm() {
                 title: 'Registrazione Riuscita',
                 description: 'Benvenuto! Login in corso...',
             });
+            // Send notification to super-admin about the new user
              addNotification({
                 type: 'user_registered',
                 message: `Nuovo utente registrato: ${values.email}`,

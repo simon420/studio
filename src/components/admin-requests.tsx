@@ -30,7 +30,6 @@ export default function AdminRequests() {
   } = useAdminStore();
   const { toast } = useToast();
   const [processingId, setProcessingId] = React.useState<string | null>(null);
-  const addNotification = useNotificationStore((state) => state.addNotification);
 
   React.useEffect(() => {
     fetchRequests();
@@ -44,10 +43,7 @@ export default function AdminRequests() {
         title: 'Richiesta Approvata',
         description: `L'utente ${email} è ora un amministratore.`,
       });
-      addNotification({
-        type: 'user_approved',
-        message: `L'account admin per ${email} è stato approvato.`,
-      });
+      // Notification is removed from here as it's not useful for the person performing the action
     } catch (error: any) {
       console.error('Errore approvazione richiesta:', error);
       toast({
