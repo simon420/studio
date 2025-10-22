@@ -11,6 +11,7 @@ import { Loader2, LogOut, ShieldCheck, ShieldAlert, KeyRound, ServerCrash } from
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 
 
 export default function SuperAdminDashboardPage() {
