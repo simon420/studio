@@ -21,17 +21,29 @@ export function getAdminServices() {
   // Costruisce le credenziali dalle variabili d'ambiente individuali.
   try {
     // Controlla che le variabili d'ambiente essenziali esistano
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_PRIVATE_KEY || !process.env.FIREBASE_CLIENT_EMAIL) {
-        const error = 'CRITICAL: Mancano variabili d\'ambiente Firebase essenziali (PROJECT_ID, PRIVATE_KEY, CLIENT_EMAIL).';
+    const requiredEnvVars = [
+      'FIREBASE_PROJECT_ID',
+      'FIREBASE_PRIVATE_KEY',
+      'FIREBASE_CLIENT_EMAIL'
+    ];
+    const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+
+    if (missingVars.length > 0) {
+        const error = `CRITICAL: Mancano variabili d'ambiente Firebase essenziali: ${missingVars.join(', ')}.`;
         console.error(error);
         return { adminDb: null, adminAuth: null, error };
     }
+
+    // Pulisce la chiave privata: rimuove le virgolette e corregge gli "a capo"
+    const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '')
+      .replace(/^"|"$/g, '') // Rimuove le virgolette all'inizio e alla fine
+      .replace(/\\n/g, '\n');
 
     const serviceAccount = {
       type: process.env.FIREBASE_TYPE,
       project_id: process.env.FIREBASE_PROJECT_ID,
       private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-      private_key: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+      private_key: privateKey,
       client_email: process.env.FIREBASE_CLIENT_EMAIL,
       client_id: process.env.FIREBASE_CLIENT_ID,
       auth_uri: process.env.FIREBASE_AUTH_URI,
@@ -54,7 +66,7 @@ export function getAdminServices() {
     };
   } catch (e: any) {
     const error = `Errore nell'inizializzazione di Firebase Admin SDK: ${e.message}`;
-    console.error(error);
+    console.error(error, e.stack); // Logga anche lo stack trace per un debug più approfondito
     return { adminDb: null, adminAuth: null, error };
   }
 }
