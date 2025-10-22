@@ -47,11 +47,13 @@ export default function SuperAdminDashboardPage() {
   };
 
   // Show a loading screen while authentication status is being determined.
-  if (isLoading) {
+  if (isLoading || isLoggingOut) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="ml-3 text-lg text-muted-foreground">Verifica accesso...</p>
+        <p className="ml-3 text-lg text-muted-foreground">
+            {isLoggingOut ? 'Disconnessione in corso...' : 'Verifica accesso...'}
+        </p>
       </div>
     );
   }
