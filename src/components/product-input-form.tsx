@@ -43,7 +43,7 @@ export default function ProductInputForm() {
   const addProduct = useProductStore((state) => state.addProduct);
   const { isAuthenticated, userRole, isLoading: authIsLoading } = useAuthStore();
   const { toast } = useToast();
-  const isAdmin = isAuthenticated && userRole === 'admin';
+  const isAuthorized = isAuthenticated && (userRole === 'admin' || userRole === 'super-admin');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<ProductFormInputValues>({
@@ -56,13 +56,13 @@ export default function ProductInputForm() {
   });
 
    React.useEffect(() => {
-     if (!isAdmin && !authIsLoading) { 
+     if (!isAuthorized && !authIsLoading) { 
        form.reset({ name: '', code: '', price: '' });
      }
-   }, [isAdmin, authIsLoading, form]);
+   }, [isAuthorized, authIsLoading, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!isAdmin) {
+    if (!isAuthorized) {
         toast({
             title: "Non autorizzato",
             description: "Devi essere un amministratore per aggiungere prodotti.",
@@ -100,7 +100,7 @@ export default function ProductInputForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <fieldset disabled={!isAdmin || displayLoading} className="space-y-4">
+        <fieldset disabled={!isAuthorized || displayLoading} className="space-y-4">
           <FormField
             control={form.control}
             name="name"
@@ -140,12 +140,12 @@ export default function ProductInputForm() {
               </FormItem>
             )}
           />
-           <Button type="submit" className="w-full" disabled={!isAdmin || displayLoading}>
-             {displayLoading && isAdmin ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-              {displayLoading && isAdmin ? 'Aggiungendo...' : 'Aggiungi Prodotto'}
+           <Button type="submit" className="w-full" disabled={!isAuthorized || displayLoading}>
+             {displayLoading && isAuthorized ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+              {displayLoading && isAuthorized ? 'Aggiungendo...' : 'Aggiungi Prodotto'}
            </Button>
         </fieldset>
-         {!isAdmin && !authIsLoading && ( 
+         {!isAuthorized && !authIsLoading && ( 
              <p className="text-sm text-muted-foreground text-center pt-2">
                  Solo gli amministratori possono aggiungere prodotti.
              </p>
