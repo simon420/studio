@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 // This function ensures the Firebase Admin SDK is initialized and returns its services.
 // It's designed to be idempotent, meaning it will only initialize the app once.
 export function getAdminServices() {
+  // If the admin app is already initialized, return the services immediately.
   if (admin.apps.length > 0) {
     return {
       adminDb: admin.firestore(),
@@ -12,6 +13,8 @@ export function getAdminServices() {
     };
   }
 
+  // IMPORTANT: The service account key is securely loaded from an environment variable.
+  // This variable is managed by the Firebase Studio environment and should not be set manually.
   const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
   if (!serviceAccountEnv) {
     const error = 'CRITICAL: FIREBASE_SERVICE_ACCOUNT_KEY environment variable is not set.';
