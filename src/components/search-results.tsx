@@ -99,7 +99,12 @@ export default function SearchResults() {
                        </Button>
                      </TableHead>
                      {userRole !== 'user' && (
-                        <TableHead className="w-[20%]">Server</TableHead>
+                        <TableHead className="w-[20%]">
+                          <Button variant="ghost" onClick={() => handleSort('serverId')}>
+                            Server
+                            {renderSortArrow('serverId')}
+                          </Button>
+                        </TableHead>
                      )}
                      <TableHead className="w-[20%]">Aggiunto Da</TableHead>
                    </TableRow>
