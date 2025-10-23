@@ -19,6 +19,10 @@ function getShard(productCode: number): { shardId: string; shardDb: Firestore } 
 // Keep track of unsubscribe functions for real-time listeners
 let productListeners: Unsubscribe[] = [];
 
+// State to track if a deletion was initiated by the current user
+let localDeletionInProgress: string | null = null;
+
+
 interface ProductState {
   searchTerm: string;
   products: Product[];
@@ -99,15 +103,29 @@ export const useProductStore = create<ProductState>()(
                       }
                   });
       
-                  // Check for deleted products by someone else
+                  // Check for deleted products
                   oldProducts.forEach(oldProduct => {
-                      if (!newProductMap.has(oldProduct.id) && oldProduct.addedByUid !== currentUserId) {
+                      if (newProductMap.has(oldProduct.id)) return; // Product still exists
+
+                      const isOwner = oldProduct.addedByUid === currentUserId;
+                      
+                      // Case 1: User is owner, but deletion was not triggered by them locally
+                      if (isOwner && localDeletionInProgress !== oldProduct.id) {
                           addNotification({
+                              type: 'product_deleted',
+                              message: `Il tuo prodotto "${oldProduct.name}" è stato rimosso da un altro utente.`,
+                          });
+                      }
+                      // Case 2: User is not owner
+                      else if (!isOwner) {
+                           addNotification({
                               type: 'product_deleted',
                               message: `Prodotto "${oldProduct.name}" eliminato.`,
                           });
                       }
                   });
+                  // Reset local deletion tracker
+                  localDeletionInProgress = null;
               }
       
               set({ products: newProductList });
@@ -223,6 +241,8 @@ export const useProductStore = create<ProductState>()(
         if (currentProduct?.addedByUid !== uid) {
             throw new Error("L'amministratore può eliminare solo i propri prodotti.");
         }
+        
+        localDeletionInProgress = productId; // Track local deletion
 
         const shardBatch = writeBatch(shardDb);
         const mainDbBatch = writeBatch(db);
@@ -269,6 +289,8 @@ export const useProductStore = create<ProductState>()(
          if (!isAuthenticated || userRole !== 'super-admin') {
           throw new Error("Solo i super-amministratori possono eseguire questa azione.");
         }
+        
+        localDeletionInProgress = productId; // Track local deletion
 
         const shardDb = shards[serverId as keyof typeof shards];
         if (!shardDb) {
