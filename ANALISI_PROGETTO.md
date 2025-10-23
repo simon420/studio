@@ -1,6 +1,8 @@
-# Analisi del Progetto: Applicazione di Ricerca Prodotti
+# Analisi del Progetto: Sistema Distribuito di Ricerca Prodotti
 
-Questo documento analizza l'applicazione web per la ricerca e gestione di prodotti, sviluppata come progetto universitario. La relazione copre i requisiti funzionali e non funzionali, le tecnologie utilizzate, l'architettura del software e il funzionamento del sistema in base ai ruoli utente.
+Questo documento analizza la progettazione e l'implementazione di un sistema distribuito per la ricerca di prodotti, sviluppato in conformità con la traccia di un progetto universitario. La relazione illustra come l'applicazione soddisfi i requisiti funzionali e non funzionali richiesti, facendo leva su soluzioni **Google Cloud** come **Firebase Firestore** per simulare un'architettura multi-server.
+
+La traccia richiede la realizzazione di un sistema per la ricerca di informazioni su prodotti (nome, codice, prezzo) distribuiti su più server, consentendo a **utenti generici** di effettuare ricerche e a **gestori** di inserire e ricercare prodotti.
 
 ---
 
@@ -8,108 +10,88 @@ Questo documento analizza l'applicazione web per la ricerca e gestione di prodot
 
 ### 1.1. Requisiti Funzionali (RF)
 
-I requisiti funzionali descrivono *cosa* il sistema deve fare.
+I requisiti funzionali descrivono *cosa* il sistema deve fare, in linea con la traccia del progetto.
 
-| ID | Requisito Funzionale | Stato di Implementazione |
+| ID | Requisito Funzionale (dalla traccia) | Implementazione e Stato |
 | :-- | :--- | :--- |
-| **RF1** | **Autenticazione Utenti** | **Completato**. Il sistema permette agli utenti di registrarsi e accedere tramite email e password. |
-| **RF2** | **Gestione Ruoli Utente** | **Completato**. Il sistema supporta tre ruoli: `user`, `admin`, e `super-admin`, con permessi distinti. |
-| **RF3** | **Registrazione Condizionale** | **Completato**. Gli utenti `user` possono registrarsi direttamente. Gli `admin` devono inviare una richiesta che necessita di approvazione. |
-| **RF4** | **Ricerca Prodotti** | **Completato**. Tutti gli utenti autenticati possono cercare prodotti per nome o codice. |
-| **RF5** | **Visualizzazione Prodotti** | **Completato**. I risultati della ricerca sono mostrati in una tabella con dettagli come nome, codice, prezzo e server di provenienza. |
-| **RF6** | **Aggiunta Prodotti (Admin)** | **Completato**. Gli utenti con ruolo `admin` e `super-admin` possono aggiungere nuovi prodotti al sistema. |
-| **RF7** | **Modifica Prodotti (Admin)** | **Completato**. Gli `admin` possono modificare solo i prodotti da loro creati. Il `super-admin` può modificare qualsiasi prodotto. |
-| **RF8** | **Eliminazione Prodotti (Admin)** | **Completato**. Gli `admin` possono eliminare solo i loro prodotti. Il `super-admin` può eliminare qualsiasi prodotto. |
-| **RF9** | **Gestione Richieste Admin (Super Admin)** | **Completato**. Il `super-admin` può visualizzare, approvare o rifiutare le richieste di registrazione degli `admin`. |
-| **RF10**| **Gestione Utenti (Super Admin)** | **Completato**. Il `super-admin` può visualizzare ed eliminare qualsiasi utente (escluso se stesso). |
-| **RF11**| **Gestione Prodotti Amministrata (Super Admin)** | **Completato**. Durante l'eliminazione di un `admin`, il `super-admin` può decidere se riassegnare a sé i prodotti dell'admin o eliminarli. |
-| **RF12**| **Notifiche in Tempo Reale** | **Completato**. Il sistema notifica gli utenti su eventi rilevanti (es. aggiunta/modifica/eliminazione di prodotti, nuove richieste admin) tramite un centro notifiche. |
+| **RF1** | **Ricerca Prodotti da parte degli Utenti**: Gli utenti devono poter inserire termini di ricerca e visualizzare i risultati. | **Completato**. Tutti gli utenti autenticati (sia `user` che `admin`) possono utilizzare una barra di ricerca per trovare prodotti per nome o codice. I risultati vengono aggregati da tutti i "server" (shard di Firestore) e mostrati in una tabella chiara. |
+| **RF2** | **Salvataggio Prodotti da parte dei Gestori**: I gestori devono poter salvare nuovi prodotti sui server. | **Completato**. Gli utenti con ruolo `admin` e `super-admin` (i "gestori" del sistema) possono aggiungere prodotti tramite un apposito form. Il sistema determina automaticamente su quale "server" (`shard`) salvare il prodotto in base al suo codice, implementando la logica di distribuzione. |
+| **RF3** | **Ricerca Prodotti da parte dei Gestori**: I gestori devono poter effettuare ricerche su tutte le tabelle dei server. | **Completato**. I gestori (`admin`, `super-admin`) utilizzano la stessa potente funzione di ricerca degli utenti `user`, che opera in modo trasparente su tutti i database distribuiti. |
+| **RF4** | **Autenticazione e Gestione Ruoli**: Il sistema deve distinguere tra "utenti" e "gestori" per applicare i permessi corretti. | **Completato**. Il sistema utilizza **Firebase Authentication** e supporta tre ruoli (`user`, `admin`, `super-admin`) che mappano perfettamente i concetti di "utente" e "gestore", con logiche di autorizzazione granulari. |
+| **RF5** | **Gestione Privilegiata (Funzionalità Aggiuntiva)**: Il sistema deve offrire funzionalità avanzate per la gestione completa delle risorse. | **Completato**. Sono state implementate funzionalità avanzate non esplicitamente richieste ma essenziali per un sistema reale: modifica/eliminazione di prodotti (con permessi basati sulla proprietà), approvazione di nuovi gestori e gestione completa degli utenti da parte di un `super-admin`. |
+| **RF6** | **Notifiche in Tempo Reale (Funzionalità Aggiuntiva)**: Il sistema notifica gli utenti su eventi rilevanti per promuovere la collaborazione. | **Completato**. Gli utenti ricevono notifiche in tempo reale (es. "Prodotto X modificato da Y"), migliorando la consapevolezza su un sistema distribuito. |
 
 ### 1.2. Requisiti Non Funzionali (RNF)
 
-I requisiti non funzionali descrivono *come* il sistema deve operare.
+I requisiti non funzionali descrivono *come* il sistema deve operare, con particolare attenzione alle performance e alla scalabilità in un contesto distribuito.
 
-| ID | Requisito Non Funzionale | Stato di Implementazione |
+| ID | Requisito Non Funzionale | Stato e Implementazione |
 | :-- | :--- | :--- |
-| **RNF1** | **Usabilità** | **Completato**. L'interfaccia è moderna, reattiva e intuitiva, realizzata con componenti predefiniti (ShadCN/UI) e un layout coerente. L'uso di `toast` e `loader` fornisce feedback chiari all'utente. |
-| **RNF2** | **Performance** | **Completato**. L'architettura Next.js App Router con Server Components e la gestione dello stato reattiva (Zustand) garantiscono tempi di caricamento rapidi e un'esperienza fluida. Le operazioni sul database sono ottimizzate tramite listener in tempo reale. |
-| **RNF3** | **Scalabilità** | **Parzialmente Completato**. L'uso di Firebase Firestore con sharding (database multipli) pone le basi per una scalabilità orizzontale. L'architettura serverless di Firebase gestisce automaticamente le risorse. |
-| **RNF4** | **Sicurezza** | **Completato**. L'autenticazione è gestita da Firebase Authentication. La logica di autorizzazione è implementata sia a livello di interfaccia (mostrando/nascondendo elementi) sia a livello di API (endpoint protetti) e regole Firestore (non visibili nel codice ma assunte). |
-| **RNF5** | **Manutenibilità** | **Completato**. Il codice è organizzato in moduli (componenti, store, lib) con responsabilità chiare. L'uso di TypeScript e di uno state manager centralizzato (Zustand) facilita la comprensione e la modifica del codice. |
-| **RNF6** | **Responsività** | **Completato**. L'applicazione è progettata con Tailwind CSS per adattarsi a diverse dimensioni di schermo, da dispositivi mobili a desktop. |
+| **RNF1** | **Usabilità** | **Completato**. L'interfaccia è moderna e intuitiva (ShadCN/UI), fornendo feedback costanti tramite `toast`, `loader` e notifiche, rendendo semplice l'interazione con un sistema complesso. |
+| **RNF2** | **Performance in Ambiente Distribuito** | **Completato**. L'architettura Next.js App Router con Server Components e l'uso di listener Firestore in tempo reale garantiscono un'esperienza reattiva. Le ricerche sono performanti nonostante la necessità di interrogare più database contemporaneamente. |
+| **RNF3** | **Scalabilità e Distribuzione** | **Completato**. Questo è il cuore del progetto. L'uso di **Firebase Firestore** con una strategia di **sharding manuale** (database `shard-a`, `shard-b`, `shard-c`) simula efficacemente un sistema distribuito su più server. Questa architettura, basata su una soluzione Google Cloud, è nativamente scalabile. |
+| **RNF4** | **Sicurezza** | **Completato**. **Firebase Authentication (Google Cloud)** gestisce l'autenticazione. Le regole di autorizzazione sono implementate sia a livello di UI (interfaccia dinamica per ruolo) sia a livello di API e regole di sicurezza Firestore (assunte), garantendo che ogni gestore possa modificare solo i propri dati (salvo il `super-admin`). |
+| **RNF5** | **Manutenibilità** | **Completato**. L'uso di TypeScript, un'architettura a componenti e uno state management centralizzato (Zustand) rendono il codice modulare, comprensibile e facile da estendere. |
+| **RNF6** | **Responsività** | **Completato**. L'applicazione si adatta a schermi di diverse dimensioni (desktop, mobile) grazie a Tailwind CSS. |
 
 ---
 
-## 2. Tecnologie Utilizzate
+## 2. Tecnologie Utilizzate (Stack Google Cloud e Frontend Moderno)
 
-- **Frontend Framework**: **Next.js (React)** - Utilizzato per il rendering lato server (SSR) e la generazione di siti statici (SSG), con l'architettura App Router per un routing moderno e performante.
-- **Linguaggio**: **TypeScript** - Aggiunge la tipizzazione statica a JavaScript, migliorando la robustezza e la manutenibilità del codice.
-- **Styling**: **Tailwind CSS** e **ShadCN/UI** - Tailwind CSS per uno styling a basso livello basato su utility, e ShadCN/UI per una libreria di componenti UI riutilizzabili, accessibili e personalizzabili.
-- **Backend-as-a-Service (BaaS)**: **Firebase**
-    - **Firestore**: Database NoSQL in tempo reale utilizzato per la persistenza dei dati (prodotti, utenti, richieste admin). È stata implementata una logica di **sharding** manuale per distribuire i prodotti su più istanze di database (`shard-a`, `shard-b`, `shard-c`).
-    - **Firebase Authentication**: Servizio per la gestione completa del ciclo di vita dell'autenticazione (registrazione, login, logout, gestione sessioni).
-- **State Management**: **Zustand** - Una libreria di gestione dello stato per React, leggera e basata su hook, utilizzata per centralizzare e condividere lo stato dell'applicazione (es. stato di autenticazione, lista prodotti, notifiche).
-- **API Backend**: **Next.js API Routes** - Utilizzate per creare endpoint server-side (es. `/api/approve-admin`) che interagiscono con il Firebase Admin SDK per operazioni privilegiate.
-- **Librerie Ausiliarie**: `react-hook-form` e `zod` per la validazione dei form, `lucide-react` per le icone, `date-fns` per la formattazione delle date.
+- **Piattaforma Cloud**: **Google Cloud Platform (GCP)**. I requisiti di calcolo, storage e virtualizzazione sono soddisfatti tramite l'utilizzo dei servizi serverless di **Firebase**, che è parte integrante dell'offerta GCP.
+- **Database Distribuito (Storage)**: **Firebase Firestore**. Utilizzato come database NoSQL in tempo reale. La richiesta di un sistema "multi-server" è stata implementata tramite **sharding**: sono state create più istanze di database (`shard-a`, `shard-b`, `shard-c`) e i prodotti vengono distribuiti tra di esse in base al loro codice. L'applicazione si connette e ascolta contemporaneamente tutti gli shard.
+- **Autenticazione (Calcolo/Servizio)**: **Firebase Authentication**. Gestisce in modo sicuro la registrazione, il login e la gestione delle sessioni utente, fornendo la base per il sistema di ruoli.
+- **Frontend Framework**: **Next.js (React)**. Scelta ideale per la sua performance (Server Components) e per la sua architettura moderna (App Router).
+- **Linguaggio**: **TypeScript**. Per un codice robusto, manutenibile e con meno errori.
+- **Styling**: **Tailwind CSS** e **ShadCN/UI**. Per un'interfaccia moderna, reattiva e personalizzabile.
+- **State Management**: **Zustand**. Per una gestione dello stato client-side centralizzata, leggera e reattiva, essenziale per sincronizzare i dati provenienti dai vari shard.
 
 ---
 
-## 3. Architettura e Moduli Principali
+## 3. Architettura del Sistema Distribuito e Moduli Chiave
 
-L'applicazione segue un'architettura a componenti basata su Next.js, con una chiara separazione delle responsabilità.
+### 3.1. `src/store/` - Il Cervello Logico del Sistema
 
-### 3.1. `src/store/` - State Management (Zustand)
+Questa directory contiene gli store Zustand, che orchestrano la logica del sistema.
 
-Questo è il cuore logico dell'applicazione client-side. Ogni "store" gestisce una porzione specifica dello stato globale e le relative azioni.
+- **`auth-store.ts`**: Gestisce lo stato di autenticazione dell'utente e il suo ruolo. È il primo a entrare in gioco e determina quali listener devono essere attivati.
+- **`product-store.ts`**: **Questo è il modulo chiave per la logica distribuita**.
+    - La funzione `listenToAllProductShards` avvia un listener in tempo reale per **ciascuno shard** di Firestore (`shard-a`, `shard-b`, `shard-c`).
+    - I dati provenienti da tutti i server vengono aggregati in un unico array di prodotti nello stato locale, fornendo una visione unificata del sistema.
+    - La funzione `addProduct` contiene la logica di **sharding**: calcola lo shard corretto (`getShard`) in base al codice del prodotto e scrive il dato solo su quel database specifico.
+    - Implementa la logica di notifica confrontando lo stato dei prodotti prima e dopo ogni aggiornamento ricevuto dai listener.
+- **Store Amministrativi (`admin-store.ts`, `user-management-store.ts`)**: Gestiscono la logica specifica del `super-admin`, come l'approvazione di nuovi gestori e la gestione degli utenti.
 
-- **`auth-store.ts`**: Gestisce lo stato dell'utente (loggato/non loggato, ruolo, UID). Si interfaccia con Firebase Authentication e recupera i dati dell'utente da Firestore. Avvia e termina i listener degli altri store in base allo stato di autenticazione.
-- **`product-store.ts`**: Gestisce la logica dei prodotti. Ascolta in tempo reale le modifiche su tutti gli "shard" di Firestore, aggiorna la lista locale dei prodotti, gestisce l'aggiunta/modifica/eliminazione e implementa la logica di notifica per questi eventi.
-- **`admin-store.ts`**: Specifico per il `super-admin`, si mette in ascolto sulla collezione `adminRequests` per gestire le richieste di registrazione degli admin.
-- **`user-management-store.ts`**: Anch'esso per il `super-admin`, gestisce la lista di tutti gli utenti e le operazioni di eliminazione.
-- **`notification-store.ts`**: Aggrega le notifiche generate dagli altri store, le rende persistenti nel `localStorage` e gestisce lo stato di "letto/non letto".
+### 3.2. `src/lib/firebase.ts` - Connessione all'Architettura Distribuita
 
-### 3.2. `src/components/` - Componenti UI
+Questo file è il punto di ingresso alla nostra architettura multi-database. Inizializza non solo la connessione principale a Firebase, ma anche le connessioni separate a **ciascuno shard** (`dbShardA`, `dbShardB`, `dbShardC`), rendendole disponibili al resto dell'applicazione.
 
-Contiene tutti i componenti React riutilizzabili.
-- **`ui/`**: Componenti base forniti da ShadCN (es. `Button`, `Card`, `Table`).
-- **Componenti Funzionali**: (es. `admin-products-list.tsx`, `search-results.tsx`, `user-management.tsx`). Questi componenti si "agganciano" agli store Zustand per ottenere i dati e le funzioni necessarie a svolgere il loro compito, mantenendo la logica di business separata dalla UI.
-- **`notification-center.tsx`**: Un esempio perfetto di questa architettura. Il componente si collega allo `notification-store` e allo `auth-store` per visualizzare le notifiche pertinenti al ruolo dell'utente, senza conoscere i dettagli di come queste notifiche vengono generate.
+### 3.3. `src/app/` e `src/components/` - Interfaccia Utente
 
-### 3.3. `src/app/` - Routing e Pagine
-
-Implementa il routing basato su App Router di Next.js.
-- **`(pagine)`**: Ogni cartella corrisponde a una rotta (es. `/login`, `/super-admin/dashboard`).
-- **`page.tsx`**: Il file principale di ogni rotta, che assembla i componenti per costruire la pagina.
-- **`layout.tsx`**: Definisce la struttura comune delle pagine (es. include il font, il `Toaster` per le notifiche a comparsa).
-- **`api/`**: Contiene le API server-side che eseguono operazioni sicure utilizzando il **Firebase Admin SDK**, come la creazione di un utente `admin` dopo l'approvazione.
+- **Pagine e Routing**: L'App Router di Next.js definisce le pagine (`/login`, `/super-admin/dashboard`, etc.). La pagina principale `/` contiene la logica per renderizzare l'interfaccia corretta in base al ruolo utente, gestendo anche i reindirizzamenti.
+- **Componenti**: I componenti React (`search-results.tsx`, `admin-products-list.tsx`, etc.) si collegano agli store Zustand per visualizzare i dati aggregati e per invocare le azioni (es. aggiunta, modifica). Sono "agnostici" rispetto alla provenienza dei dati; non sanno da quale shard arrivi un prodotto, ma lavorano sulla vista unificata fornita dal `product-store`.
 
 ---
 
-## 4. Funzionamento per Ruolo Utente
+## 4. Funzionamento per Ruolo Utente (Utente vs. Gestore)
 
 ### 4.1. Utente (`user`)
 
-- **Flusso**: Si registra, accede e atterra sulla pagina principale.
+- **Flusso**: Si registra o accede. Atterra sulla pagina principale.
+- **Permessi**: Come da traccia, può **solo ricercare e visualizzare prodotti**. Il sistema gli mostra i risultati aggregati da tutti i server in modo trasparente. Non può aggiungere, modificare o eliminare prodotti. L'interfaccia nasconde queste funzionalità.
+
+### 4.2. Gestore (`admin`)
+
+- **Flusso**: Deve inviare una richiesta di registrazione, che viene approvata dal `super-admin`. Una volta approvato, può accedere.
 - **Permessi**:
-    - **Visualizzazione**: Può cercare e visualizzare tutti i prodotti nel sistema.
-    - **Limitazioni**: Non può aggiungere, modificare o eliminare prodotti. Vede dei pannelli informativi che spiegano queste limitazioni.
-- **Interfaccia**: Vede la barra di ricerca, i risultati e i controlli di autenticazione. Le sezioni per l'aggiunta e la gestione dei prodotti sono sostituite da messaggi.
+    - **Ricerca Globale**: Può cercare e visualizzare tutti i prodotti, come un `user`.
+    - **Salvataggio Prodotti**: Può **aggiungere nuovi prodotti**. Il sistema instrada automaticamente il nuovo prodotto allo shard corretto.
+    - **Gestione Proprietaria**: Può modificare ed eliminare **solo** i prodotti che ha creato lui stesso, garantendo l'incapsulamento dei dati tra i gestori.
 
-### 4.2. Amministratore (`admin`)
+### 4.3. Super-Gestore (`super-admin`)
 
-- **Flusso**: Deve richiedere la registrazione. Dopo l'approvazione del `super-admin`, può accedere.
-- **Permessi**:
-    - Eredita tutti i permessi dell'utente `user`.
-    - **Aggiunta Prodotti**: Può aggiungere nuovi prodotti attraverso un form dedicato. Il sistema determina automaticamente lo "shard" corretto in base al codice prodotto.
-    - **Gestione Prodotti Proprietari**: Può visualizzare, modificare ed eliminare **solo** i prodotti che ha aggiunto.
-- **Interfaccia**: Oltre alla ricerca, vede un form per aggiungere prodotti e una tabella che elenca solo i prodotti da lui inseriti, con pulsanti per la modifica e l'eliminazione.
-
-### 4.3. Super Amministratore (`super-admin`)
-
-- **Flusso**: Accede tramite una pagina di login dedicata (`/super-admin`) e viene reindirizzato a una dashboard di gestione completa.
-- **Permessi**: Ha il controllo totale sul sistema.
-    - **Gestione Utenti**: Può visualizzare tutti gli utenti registrati (user, admin, super-admin) ed eliminare qualsiasi utente (tranne se stesso).
-    - **Gestione Richieste Admin**: Vede le richieste di registrazione degli admin in tempo reale e può approvarle (creando l'utente) o rifiutarle.
-    - **Gestione Globale dei Prodotti**: Può aggiungere, visualizzare, cercare, modificare ed eliminare **qualsiasi** prodotto nel sistema, indipendentemente da chi lo ha creato.
-    - **Gestione Prodotti Admin Eliminati**: Quando elimina un utente `admin`, gli viene presentata una scelta: eliminare tutti i prodotti di quell'admin o riassegnarli al proprio account `super-admin`.
-- **Interfaccia**: Ha una dashboard dedicata con schede per la gestione dei prodotti, degli utenti e delle richieste admin. Ha una visione globale e privilegi elevati su tutte le risorse.
+- **Flusso**: Accede tramite una pagina dedicata e viene reindirizzato a una dashboard di controllo totale.
+- **Permessi**: Ha il controllo completo su tutto il sistema distribuito.
+    - **Gestione Globale Prodotti**: Può aggiungere, visualizzare, modificare ed eliminare **qualsiasi prodotto su qualsiasi shard**, indipendentemente da chi lo ha creato.
+    - **Gestione degli Altri Gestori**: Può approvare le richieste di registrazione degli `admin` e può eliminare qualsiasi utente o gestore dal sistema.
+    - **Gestione dei Dati Orfani**: Quando elimina un `admin`, può decidere se riassegnare a sé stesso i prodotti di quell'admin o eliminarli, risolvendo un problema comune nei sistemi distribuiti.
