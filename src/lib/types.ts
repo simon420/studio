@@ -10,6 +10,8 @@ export type Product = {
   serverId?: string; // Optional: Identifier for the server where the product is located
   addedByUid?: string; // UID of the user who added the product
   addedByEmail?: string; // Email of the user who added the product
+  lastModifiedByUid?: string; // UID of the user who last modified the product
+  lastModifiedByEmail?: string; // Email of the user who last modified the product
 };
 
 export type UserRole = 'admin' | 'user' | 'super-admin'; // Added 'super-admin' role

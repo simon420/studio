@@ -81,27 +81,20 @@ export const useProductStore = create<ProductState>()(
                           });
                       // Case 2: Existing product was updated
                       } else if (oldProduct) {
-                          const hasChanged = JSON.stringify(oldProduct) !== JSON.stringify(newProduct);
-                          // Notify if the product changed AND...
-                          // (A) the current user is the owner, but someone else (super-admin) changed it
-                          // OR (B) the current user is NOT the owner (sees a general update)
-                          if (hasChanged) {
-                              const isOwner = oldProduct.addedByUid === currentUserId;
-                              const modifierIsSomeoneElse = newProduct.addedByUid !== currentUserId;
+                          const hasChanged = oldProduct.name !== newProduct.name || oldProduct.price !== newProduct.price;
+                          const isOwner = oldProduct.addedByUid === currentUserId;
+                          const modifierIsSomeoneElse = newProduct.lastModifiedByUid !== currentUserId;
 
-                              if (isOwner && modifierIsSomeoneElse) {
-                                  // This is my product, but someone else (super-admin) just modified it
-                                  addNotification({
-                                    type: 'product_updated',
-                                    message: `Il tuo prodotto "${oldProduct.name}" è stato aggiornato da ${newProduct.addedByEmail}.`,
-                                  });
-                              } else if (!isOwner) {
-                                  // This is not my product, I'm just seeing a general update
-                                  addNotification({
-                                      type: 'product_updated',
-                                      message: `Prodotto "${newProduct.name}" aggiornato.`,
-                                  });
-                              }
+                          if (hasChanged && isOwner && modifierIsSomeoneElse && newProduct.lastModifiedByUid) {
+                              addNotification({
+                                type: 'product_updated',
+                                message: `Il tuo prodotto "${oldProduct.name}" è stato aggiornato da ${newProduct.lastModifiedByEmail}.`,
+                              });
+                          } else if (hasChanged && !isOwner) {
+                              addNotification({
+                                  type: 'product_updated',
+                                  message: `Prodotto "${newProduct.name}" aggiornato.`,
+                              });
                           }
                       }
                   });
@@ -171,6 +164,8 @@ export const useProductStore = create<ProductState>()(
           ...productData,
           addedByUid: uid,
           addedByEmail: email,
+          lastModifiedByUid: uid, // Set modifier on creation
+          lastModifiedByEmail: email,
         };
       
         const batch = writeBatch(db); 
@@ -187,7 +182,7 @@ export const useProductStore = create<ProductState>()(
       },
 
       updateProductInStoreAndFirestore: async (productId, serverId, updatedData) => {
-        const { userRole, isAuthenticated, uid } = useAuthStore.getState();
+        const { userRole, isAuthenticated, uid, email } = useAuthStore.getState();
         if (!isAuthenticated || userRole !== 'admin') {
           throw new Error("L'utente deve essere un amministratore per aggiornare i prodotti.");
         }
@@ -203,8 +198,14 @@ export const useProductStore = create<ProductState>()(
         if (currentProduct?.addedByUid !== uid) {
             throw new Error("L'amministratore può aggiornare solo i propri prodotti.");
         }
+        
+        const dataToUpdate = {
+          ...updatedData,
+          lastModifiedByUid: uid,
+          lastModifiedByEmail: email,
+        };
 
-        await updateDoc(productDocRef, updatedData);
+        await updateDoc(productDocRef, dataToUpdate);
       },
 
       deleteProductFromStoreAndFirestore: async (productId, serverId) => {
@@ -248,8 +249,14 @@ export const useProductStore = create<ProductState>()(
         }
 
         const productDocRef = doc(shardDb, 'products', productId);
+
+        const dataToUpdate: any = { 
+            ...updatedData,
+            lastModifiedByUid: uid,
+            lastModifiedByEmail: email,
+        };
+
         // When super-admin reassigns, they become the new owner
-        const dataToUpdate = { ...updatedData };
         if (dataToUpdate.addedByUid) {
             dataToUpdate.addedByEmail = email; // Ensure email is also updated on reassign
         }
