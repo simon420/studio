@@ -21,6 +21,9 @@ interface UserManagementState {
   users: ClientUser[];
   isLoading: boolean;
   error: string | null;
+  sortKey: keyof ClientUser | null;
+  sortDirection: 'asc' | 'desc';
+  setSortKey: (key: keyof ClientUser) => void;
   listenForUsers: () => void;
   cleanupUserListener: () => void;
   deleteUser: (uid: string) => Promise<void>;
@@ -34,6 +37,17 @@ export const useUserManagementStore = create<UserManagementState>()(
       users: [],
       isLoading: true,
       error: null,
+      sortKey: 'createdAt',
+      sortDirection: 'desc',
+
+      setSortKey: (key) => {
+        const { sortKey, sortDirection } = get();
+        if (sortKey === key) {
+          set({ sortDirection: sortDirection === 'asc' ? 'desc' : 'asc' });
+        } else {
+          set({ sortKey: key, sortDirection: 'asc' });
+        }
+      },
 
       listenForUsers: () => {
           const { userRole } = useAuthStore.getState();

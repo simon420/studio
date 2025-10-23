@@ -23,16 +23,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Trash2, Users, AlertTriangle, User, Recycle, Trash } from 'lucide-react';
+import { Loader2, Trash2, Users, AlertTriangle, Recycle, Trash, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from './ui/scroll-area';
 import { Badge } from './ui/badge';
 import { useAuthStore } from '@/store/auth-store';
+import { Timestamp } from 'firebase/firestore';
 
 type DeletionAction = 'delete' | 'reassign';
 
 export default function UserManagement() {
-  const { users, isLoading, error, deleteAdminUserAndManageProducts, deleteUser, revokeUserSession } = useUserManagementStore();
+  const { users, isLoading, error, deleteAdminUserAndManageProducts, deleteUser, revokeUserSession, sortKey, sortDirection, setSortKey } = useUserManagementStore();
   const { uid: currentSuperAdminUid } = useAuthStore();
   const { toast } = useToast();
   
@@ -84,6 +85,46 @@ export default function UserManagement() {
       setIsDeleting(false);
     }
   };
+
+  const handleSort = (key: keyof ClientUser) => {
+    setSortKey(key);
+  };
+
+  const renderSortArrow = (key: keyof ClientUser) => {
+    if (sortKey !== key) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4" />
+    );
+  };
+
+  const sortedUsers = React.useMemo(() => {
+    const sorted = [...users];
+    if (sortKey) {
+      sorted.sort((a, b) => {
+        let aValue = a[sortKey];
+        let bValue = b[sortKey];
+
+        // Handle Firestore Timestamps
+        if (aValue instanceof Timestamp && bValue instanceof Timestamp) {
+            aValue = aValue.toMillis();
+            bValue = bValue.toMillis();
+        }
+
+        let comparison = 0;
+        if (aValue! > bValue!) {
+          comparison = 1;
+        } else if (aValue! < bValue!) {
+          comparison = -1;
+        }
+        return sortDirection === 'asc' ? comparison : -comparison;
+      });
+    }
+    return sorted;
+  }, [users, sortKey, sortDirection]);
 
   const renderDialogContent = () => {
     if (!userToDelete) return null;
@@ -175,19 +216,27 @@ export default function UserManagement() {
       <ScrollArea className="h-[400px] rounded-md border">
         <Table>
           <TableCaption>
-            {users.length > 0 ? `Mostrando ${users.length} utenti nel sistema.` : 'Nessun utente trovato.'}
+            {sortedUsers.length > 0 ? `Mostrando ${sortedUsers.length} utenti nel sistema.` : 'Nessun utente trovato.'}
           </TableCaption>
           <TableHeader className="sticky top-0 bg-secondary z-10">
             <TableRow>
-              <TableHead>Email</TableHead>
-              <TableHead>Ruolo</TableHead>
-              <TableHead>UID</TableHead>
-              <TableHead>Creato il</TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('email')}>Email {renderSortArrow('email')}</Button>
+              </TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('role')}>Ruolo {renderSortArrow('role')}</Button>
+              </TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('uid')}>UID {renderSortArrow('uid')}</Button>
+              </TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('createdAt')}>Creato il {renderSortArrow('createdAt')}</Button>
+              </TableHead>
               <TableHead className="text-center">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.length === 0 ? (
+            {sortedUsers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -197,7 +246,7 @@ export default function UserManagement() {
                 </TableCell>
               </TableRow>
             ) : (
-              users.map((user) => (
+              sortedUsers.map((user) => (
                 <TableRow key={user.uid}>
                   <TableCell className="font-medium">{user.email}</TableCell>
                   <TableCell>
@@ -212,7 +261,7 @@ export default function UserManagement() {
                      <Badge variant="outline">{user.uid}</Badge>
                   </TableCell>
                   <TableCell>
-                    {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString('it-IT') : 'N/A'}
+                    {user.createdAt instanceof Timestamp ? user.createdAt.toDate().toLocaleDateString('it-IT') : 'N/A'}
                   </TableCell>
                   <TableCell className="text-center">
                     <Button
