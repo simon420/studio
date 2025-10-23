@@ -30,23 +30,28 @@ export default function Home() {
     if (!authIsLoading && !isAuthenticated) {
       router.push('/login?redirectedFrom=/'); // Pass current path for redirect after login
     }
-  }, [authIsLoading, isAuthenticated, router]);
+    // If user is a super-admin, redirect them away from the main app page
+    if (!authIsLoading && isAuthenticated && userRole === 'super-admin') {
+      router.push('/super-admin/dashboard');
+    }
+  }, [authIsLoading, isAuthenticated, userRole, router]);
 
   // If auth is still loading, OR if auth has loaded but user is not authenticated (and is about to be redirected),
-  // show a loading screen. This prevents rendering the wrong UI state.
-  if (authIsLoading || !isAuthenticated) {
+  // OR if user is a super-admin (and is about to be redirected), show a loading screen.
+  // This prevents rendering the wrong UI state.
+  if (authIsLoading || !isAuthenticated || userRole === 'super-admin') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background"> {/* Ensure loading also has a background */}
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="ml-3 text-lg text-muted-foreground">
-          {authIsLoading ? 'Caricamento applicazione...' : 'Reindirizzamento al login...'}
+          {authIsLoading ? 'Caricamento applicazione...' : 'Reindirizzamento...'}
         </p>
       </div>
     );
   }
 
-  // If we reach here, authIsLoading is false and isAuthenticated is true.
   // We can safely render content based on the user's role.
+  // At this point, user is authenticated and is either 'admin' or 'user'.
   return (
     <div className="main-app-container">
       <div className="main-app-content">
