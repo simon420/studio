@@ -12,7 +12,7 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, addDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { UserRole, UserFirestoreData } from '@/lib/types';
-// Removed: import { useUserManagementStore } from './user-management-store';
+import { useNotificationStore } from './notification-store'; // Import notification store
 
 let sessionListener: Unsubscribe | null = null;
 
@@ -131,6 +131,8 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         try {
           await signOut(auth);
+          // Clear notifications from the previous user's session
+          useNotificationStore.getState().clearAllNotifications();
         } catch (error) {
           console.error('Firebase logout error:', error);
         } finally {
