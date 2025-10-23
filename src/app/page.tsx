@@ -32,9 +32,9 @@ export default function Home() {
     }
   }, [authIsLoading, isAuthenticated, router]);
 
-  // If auth is still loading, or if auth has loaded but user is not authenticated,
-  // show a loading/redirecting message. The useEffect above handles the actual redirect.
-  if (authIsLoading || (!authIsLoading && !isAuthenticated)) {
+  // If auth is still loading, OR if auth has loaded but user is not authenticated (and is about to be redirected),
+  // show a loading screen. This prevents rendering the wrong UI state.
+  if (authIsLoading || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background"> {/* Ensure loading also has a background */}
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -46,7 +46,7 @@ export default function Home() {
   }
 
   // If we reach here, authIsLoading is false and isAuthenticated is true.
-  // Render the authenticated application content.
+  // We can safely render content based on the user's role.
   return (
     <div className="main-app-container">
       <div className="main-app-content">
