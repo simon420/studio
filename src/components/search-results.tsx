@@ -15,7 +15,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { PackageSearch, AlertCircle, Info, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'; // Added Info icon and ArrowUpDown
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
@@ -89,90 +89,89 @@ export default function SearchResults() {
              // Render table when authenticated
              <>
              <ScrollArea className="h-[350px] rounded-md border">
-                <div className="overflow-x-auto">
-                    <Table>
-                    <TableCaption className="py-4">
-                        {filteredProducts.length > 0
-                        ? `Mostrando ${paginatedProducts.length} di ${filteredProducts.length} prodotto(i).`
-                        : ''}
-                    </TableCaption>
-                    <TableHeader className="sticky top-0 bg-secondary z-10">
-                        <TableRow>
+                <Table>
+                <TableCaption className="py-4">
+                    {filteredProducts.length > 0
+                    ? `Mostrando ${paginatedProducts.length} di ${filteredProducts.length} prodotto(i).`
+                    : ''}
+                </TableCaption>
+                <TableHeader className="sticky top-0 bg-secondary z-10">
+                    <TableRow>
+                    <TableHead style={{width: '300px'}}>
+                        <Button variant="ghost" onClick={() => handleSort('name')}>
+                        Nome
+                        {renderSortArrow('name')}
+                        </Button>
+                    </TableHead>
+                    <TableHead style={{width: '300px'}}>
+                        <Button variant="ghost" onClick={() => handleSort('code')}>
+                        Codice
+                        {renderSortArrow('code')}
+                        </Button>
+                    </TableHead>
+                    <TableHead style={{width: '300px'}} className="text-right">
+                        <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">
+                        Prezzo
+                        {renderSortArrow('price')}
+                        </Button>
+                    </TableHead>
+                    {userRole !== 'user' && (
                         <TableHead style={{width: '300px'}}>
-                            <Button variant="ghost" onClick={() => handleSort('name')}>
-                            Nome
-                            {renderSortArrow('name')}
-                            </Button>
+                        <Button variant="ghost" onClick={() => handleSort('serverId')}>
+                            Server
+                            {renderSortArrow('serverId')}
+                        </Button>
                         </TableHead>
-                        <TableHead style={{width: '300px'}}>
-                            <Button variant="ghost" onClick={() => handleSort('code')}>
-                            Codice
-                            {renderSortArrow('code')}
-                            </Button>
-                        </TableHead>
-                        <TableHead style={{width: '300px'}} className="text-right">
-                            <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">
-                            Prezzo
-                            {renderSortArrow('price')}
-                            </Button>
-                        </TableHead>
+                    )}
+                    <TableHead style={{width: '300px'}}>
+                        <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
+                        Aggiunto Da
+                        {renderSortArrow('addedByEmail')}
+                        </Button>
+                    </TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {paginatedProducts.length > 0 ? (
+                    paginatedProducts.map((product) => (
+                        <TableRow key={product.id}>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>{product.code}</TableCell>
+                        <TableCell className="text-right">
+                            €{product.price.toFixed(2)}
+                        </TableCell>
                         {userRole !== 'user' && (
-                            <TableHead style={{width: '300px'}}>
-                            <Button variant="ghost" onClick={() => handleSort('serverId')}>
-                                Server
-                                {renderSortArrow('serverId')}
-                            </Button>
-                            </TableHead>
+                            <TableCell>
+                                <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
+                                {product.serverId || 'N/D'}
+                                </Badge>
+                            </TableCell>
                         )}
-                        <TableHead style={{width: '300px'}}>
-                            <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
-                            Aggiunto Da
-                            {renderSortArrow('addedByEmail')}
-                            </Button>
-                        </TableHead>
+                        <TableCell>{product.addedByEmail || product.addedByUid || 'N/D'}</TableCell>
                         </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {paginatedProducts.length > 0 ? (
-                        paginatedProducts.map((product) => (
-                            <TableRow key={product.id}>
-                            <TableCell className="font-medium">{product.name}</TableCell>
-                            <TableCell>{product.code}</TableCell>
-                            <TableCell className="text-right">
-                                €{product.price.toFixed(2)}
-                            </TableCell>
-                            {userRole !== 'user' && (
-                                <TableCell>
-                                    <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
-                                    {product.serverId || 'N/D'}
-                                    </Badge>
-                                </TableCell>
-                            )}
-                            <TableCell>{product.addedByEmail || product.addedByUid || 'N/D'}</TableCell>
-                            </TableRow>
-                        ))
-                        ) : searchTerm ? (
-                        <TableRow>
-                            <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
-                            <div className="flex flex-col items-center justify-center gap-2">
-                                <PackageSearch className="h-8 w-8" />
-                                <span>Nessun risultato trovato per "{searchTerm}".</span>
-                            </div>
-                            </TableCell>
-                        </TableRow>
-                        ) : (
-                        <TableRow>
-                            <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
-                            <div className="flex flex-col items-center justify-center gap-2">
-                                <Info className="h-8 w-8" />
-                                <span>La lista è attualmente vuota.</span>
-                            </div>
-                            </TableCell>
-                        </TableRow>
-                        )}
-                    </TableBody>
-                    </Table>
-                </div>
+                    ))
+                    ) : searchTerm ? (
+                    <TableRow>
+                        <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                            <PackageSearch className="h-8 w-8" />
+                            <span>Nessun risultato trovato per "{searchTerm}".</span>
+                        </div>
+                        </TableCell>
+                    </TableRow>
+                    ) : (
+                    <TableRow>
+                        <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                            <Info className="h-8 w-8" />
+                            <span>La lista è attualmente vuota.</span>
+                        </div>
+                        </TableCell>
+                    </TableRow>
+                    )}
+                </TableBody>
+                </Table>
+                <ScrollBar orientation="horizontal" />
              </ScrollArea>
               {totalPages > 1 && (
                 <div className="flex items-center justify-end space-x-2 py-4">
@@ -203,5 +202,3 @@ export default function SearchResults() {
      </Card>
   );
 }
-
-    

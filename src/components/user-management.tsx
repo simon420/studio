@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Loader2, Trash2, Users, AlertTriangle, Recycle, Trash, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from './ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Badge } from './ui/badge';
 import { useAuthStore } from '@/store/auth-store';
 import { Timestamp } from 'firebase/firestore';
@@ -232,77 +232,76 @@ export default function UserManagement() {
   return (
     <div className="space-y-4">
       <ScrollArea className="h-[400px] rounded-md border">
-        <div className="overflow-x-auto">
-            <Table>
-            <TableCaption>
-                {sortedUsers.length > 0 ? `Mostrando ${paginatedUsers.length} di ${sortedUsers.length} utenti.` : 'Nessun utente trovato.'}
-            </TableCaption>
-            <TableHeader className="sticky top-0 bg-secondary z-10">
-                <TableRow>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('email')}>Email {renderSortArrow('email')}</Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('role')}>Ruolo {renderSortArrow('role')}</Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('uid')}>UID {renderSortArrow('uid')}</Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('createdAt')}>Creato il {renderSortArrow('createdAt')}</Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}} className="text-center">Azioni</TableHead>
+        <Table>
+        <TableCaption>
+            {sortedUsers.length > 0 ? `Mostrando ${paginatedUsers.length} di ${sortedUsers.length} utenti.` : 'Nessun utente trovato.'}
+        </TableCaption>
+        <TableHeader className="sticky top-0 bg-secondary z-10">
+            <TableRow>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('email')}>Email {renderSortArrow('email')}</Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('role')}>Ruolo {renderSortArrow('role')}</Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('uid')}>UID {renderSortArrow('uid')}</Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('createdAt')}>Creato il {renderSortArrow('createdAt')}</Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}} className="text-center">Azioni</TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {paginatedUsers.length === 0 ? (
+            <TableRow>
+                <TableCell colSpan={5} className="h-24 text-center">
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Users className="h-8 w-8" />
+                    <span>Nessun utente registrato nel sistema.</span>
+                </div>
+                </TableCell>
+            </TableRow>
+            ) : (
+            paginatedUsers.map((user) => (
+                <TableRow key={user.uid}>
+                <TableCell className="font-medium">{user.email}</TableCell>
+                <TableCell>
+                    <Badge variant={
+                        user.role === 'super-admin' ? 'destructive' :
+                        user.role === 'admin' ? 'default' : 'secondary'
+                    }>
+                    {user.role}
+                    </Badge>
+                </TableCell>
+                <TableCell>
+                    <Badge variant="outline">{user.uid}</Badge>
+                </TableCell>
+                <TableCell>
+                    {user.createdAt instanceof Timestamp ? user.createdAt.toDate().toLocaleDateString('it-IT') : 'N/A'}
+                </TableCell>
+                <TableCell className="text-center">
+                    <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => openDeleteDialog(user)}
+                    disabled={isDeleting || user.role === 'super-admin'}
+                    aria-label="Elimina utente"
+                    >
+                    {isDeleting && userToDelete?.uid === user.uid ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                        <Trash2 className="h-4 w-4" />
+                    )}
+                    </Button>
+                </TableCell>
                 </TableRow>
-            </TableHeader>
-            <TableBody>
-                {paginatedUsers.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <Users className="h-8 w-8" />
-                        <span>Nessun utente registrato nel sistema.</span>
-                    </div>
-                    </TableCell>
-                </TableRow>
-                ) : (
-                paginatedUsers.map((user) => (
-                    <TableRow key={user.uid}>
-                    <TableCell className="font-medium">{user.email}</TableCell>
-                    <TableCell>
-                        <Badge variant={
-                            user.role === 'super-admin' ? 'destructive' :
-                            user.role === 'admin' ? 'default' : 'secondary'
-                        }>
-                        {user.role}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <Badge variant="outline">{user.uid}</Badge>
-                    </TableCell>
-                    <TableCell>
-                        {user.createdAt instanceof Timestamp ? user.createdAt.toDate().toLocaleDateString('it-IT') : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-center">
-                        <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => openDeleteDialog(user)}
-                        disabled={isDeleting || user.role === 'super-admin'}
-                        aria-label="Elimina utente"
-                        >
-                        {isDeleting && userToDelete?.uid === user.uid ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Trash2 className="h-4 w-4" />
-                        )}
-                        </Button>
-                    </TableCell>
-                    </TableRow>
-                ))
-                )}
-            </TableBody>
-            </Table>
-        </div>
+            ))
+            )}
+        </TableBody>
+        </Table>
+        <ScrollBar orientation="horizontal" />
       </ScrollArea>
 
       {totalPages > 1 && (
@@ -335,5 +334,3 @@ export default function UserManagement() {
     </div>
   );
 }
-
-    

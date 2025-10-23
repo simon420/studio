@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -215,92 +215,91 @@ export default function SuperAdminProductsList() {
         />
       </div>
       <ScrollArea className="h-[400px] rounded-md border">
-        <div className="overflow-x-auto">
-            <Table>
-            <TableCaption>
-                {filteredAndSortedProducts.length > 0
-                ? `Mostrando ${paginatedProducts.length} di ${filteredAndSortedProducts.length} prodotti.`
-                : 'Nessun prodotto nel sistema o nessun risultato per la ricerca.'}
-            </TableCaption>
-            <TableHeader className="sticky top-0 bg-secondary z-10">
-                <TableRow>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('name')}>
-                    Nome {renderSortArrow('name')}
-                    </Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('code')}>
-                    Codice {renderSortArrow('code')}
-                    </Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('price')}>
-                    Prezzo {renderSortArrow('price')}
-                    </Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('serverId')}>
-                    Shard {renderSortArrow('serverId')}
-                    </Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}}>
-                    <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
-                    Aggiunto da {renderSortArrow('addedByEmail')}
-                    </Button>
-                </TableHead>
-                <TableHead style={{width: '300px'}} className="text-center">Azioni</TableHead>
+        <Table>
+        <TableCaption>
+            {filteredAndSortedProducts.length > 0
+            ? `Mostrando ${paginatedProducts.length} di ${filteredAndSortedProducts.length} prodotti.`
+            : 'Nessun prodotto nel sistema o nessun risultato per la ricerca.'}
+        </TableCaption>
+        <TableHeader className="sticky top-0 bg-secondary z-10">
+            <TableRow>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('name')}>
+                Nome {renderSortArrow('name')}
+                </Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('code')}>
+                Codice {renderSortArrow('code')}
+                </Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('price')}>
+                Prezzo {renderSortArrow('price')}
+                </Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('serverId')}>
+                Shard {renderSortArrow('serverId')}
+                </Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}}>
+                <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
+                Aggiunto da {renderSortArrow('addedByEmail')}
+                </Button>
+            </TableHead>
+            <TableHead style={{width: '300px'}} className="text-center">Azioni</TableHead>
+            </TableRow>
+        </TableHeader>
+        <TableBody>
+            {paginatedProducts.length === 0 ? (
+            <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center">
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                    <Package className="h-8 w-8" /> 
+                    <span>
+                    {searchTerm 
+                        ? `Nessun prodotto trovato per "${searchTerm}".` 
+                        : 'Nessun prodotto nel sistema.'}
+                    </span>
+                </div>
+                </TableCell>
+            </TableRow>
+            ) : (
+            paginatedProducts.map((product) => (
+                <TableRow key={product.id}>
+                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell>{product.code}</TableCell>
+                <TableCell>${product.price.toFixed(2)}</TableCell>
+                <TableCell>
+                    <Badge variant={'secondary'}>{product.serverId || 'N/A'}</Badge>
+                </TableCell>
+                <TableCell>{product.addedByEmail || 'N/A'}</TableCell>
+                <TableCell className="text-center">
+                    <div className="flex justify-center space-x-2">
+                        <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(product)}
+                        disabled={isUpdating || isDeleting}
+                        >
+                        <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => openDeleteDialog(product)}
+                        disabled={isUpdating || isDeleting}
+                        >
+                        {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>                        </div>
+                </TableCell>
                 </TableRow>
-            </TableHeader>
-            <TableBody>
-                {paginatedProducts.length === 0 ? (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                        <Package className="h-8 w-8" /> 
-                        <span>
-                        {searchTerm 
-                            ? `Nessun prodotto trovato per "${searchTerm}".` 
-                            : 'Nessun prodotto nel sistema.'}
-                        </span>
-                    </div>
-                    </TableCell>
-                </TableRow>
-                ) : (
-                paginatedProducts.map((product) => (
-                    <TableRow key={product.id}>
-                    <TableCell className="font-medium">{product.name}</TableCell>
-                    <TableCell>{product.code}</TableCell>
-                    <TableCell>${product.price.toFixed(2)}</TableCell>
-                    <TableCell>
-                        <Badge variant={'secondary'}>{product.serverId || 'N/A'}</Badge>
-                    </TableCell>
-                    <TableCell>{product.addedByEmail || 'N/A'}</TableCell>
-                    <TableCell className="text-center">
-                        <div className="flex justify-center space-x-2">
-                            <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(product)}
-                            disabled={isUpdating || isDeleting}
-                            >
-                            <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => openDeleteDialog(product)}
-                            disabled={isUpdating || isDeleting}
-                            >
-                            {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                            </Button>                        </div>
-                    </TableCell>
-                    </TableRow>
-                ))
-                )}
-            </TableBody>
-            </Table>
-        </div>
+            ))
+            )}
+        </TableBody>
+        </Table>
+        <ScrollBar orientation="horizontal" />
       </ScrollArea>
 
       {totalPages > 1 && (
@@ -362,5 +361,3 @@ export default function SuperAdminProductsList() {
     </div>
   );
 }
-
-    
