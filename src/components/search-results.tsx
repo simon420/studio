@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 
 export default function SearchResults() {
-  const { isAuthenticated } = useAuthStore(); // Get authentication status
+  const { isAuthenticated, userRole } = useAuthStore(); // Get authentication status and role
   // Use selectors to get only the state needed, prevents unnecessary re-renders
   const filteredProducts = useProductStore((state) => state.filteredProducts);
   const searchTerm = useProductStore((state) => state.searchTerm);
@@ -66,7 +66,9 @@ export default function SearchResults() {
                      <TableHead className="w-[30%]">Nome</TableHead>
                      <TableHead className="w-[15%]">Codice</TableHead>
                      <TableHead className="w-[15%] text-right">Prezzo</TableHead>
-                     <TableHead className="w-[20%]">Server</TableHead>
+                     {userRole !== 'user' && (
+                        <TableHead className="w-[20%]">Server</TableHead>
+                     )}
                      <TableHead className="w-[20%]">Aggiunto Da</TableHead>
                    </TableRow>
                  </TableHeader>
@@ -79,17 +81,19 @@ export default function SearchResults() {
                          <TableCell className="text-right">
                            €{product.price.toFixed(2)}
                          </TableCell>
-                         <TableCell>
-                           <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
-                             {product.serverId || 'N/D'}
-                           </Badge>
-                         </TableCell>
+                         {userRole !== 'user' && (
+                            <TableCell>
+                                <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
+                                {product.serverId || 'N/D'}
+                                </Badge>
+                            </TableCell>
+                         )}
                          <TableCell>{product.addedByEmail || product.addedByUid || 'N/D'}</TableCell>
                        </TableRow>
                      ))
                    ) : searchTerm ? (
                      <TableRow>
-                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                       <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
                          <div className="flex flex-col items-center justify-center gap-2">
                            <PackageSearch className="h-8 w-8" />
                            <span>Nessun risultato trovato per "{searchTerm}".</span>
@@ -98,7 +102,7 @@ export default function SearchResults() {
                      </TableRow>
                    ) : (
                      <TableRow>
-                       <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                       <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
                          <div className="flex flex-col items-center justify-center gap-2">
                            <Info className="h-8 w-8" />
                            <span>La lista è attualmente vuota.</span>
