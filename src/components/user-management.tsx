@@ -264,8 +264,8 @@ export default function UserManagement() {
                 </TableCell>
             </TableRow>
             ) : (
-            paginatedUsers.map((user) => (
-                <TableRow key={user.uid}>
+            paginatedUsers.map((user, index) => (
+                <TableRow key={`${user.uid}-${index}`}>
                 <TableCell className="font-medium">{user.email}</TableCell>
                 <TableCell>
                     <Badge variant={
