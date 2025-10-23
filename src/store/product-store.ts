@@ -27,6 +27,9 @@ interface ProductState {
   searchTerm: string;
   products: Product[];
   filteredProducts: Product[];
+  sortKey: keyof Product | null;
+  sortDirection: 'asc' | 'desc';
+  setSortKey: (key: keyof Product | null) => void;
   setSearchTerm: (term: string) => void;
   addProduct: (product: Omit<Product, 'id' | 'serverId'>) => Promise<void>; 
   updateProductInStoreAndFirestore: (productId: string, serverId: string, updatedData: Partial<Pick<Product, 'name' | 'price'>>) => Promise<void>;
@@ -46,7 +49,21 @@ export const useProductStore = create<ProductState>()(
       searchTerm: '',
       products: [],
       filteredProducts: [],
+      sortKey: null,
+      sortDirection: 'asc',
 
+      setSortKey: (key) => {
+        const { sortKey, sortDirection } = get();
+        if (sortKey === key) {
+          // If the same key is clicked, reverse the direction
+          set({ sortDirection: sortDirection === 'asc' ? 'desc' : 'asc' });
+        } else {
+          // If a new key is clicked, set it and default to ascending
+          set({ sortKey: key, sortDirection: 'asc' });
+        }
+        get().filterProducts(); // Re-sort and filter
+      },
+      
       setSearchTerm: (term) => {
         set({ searchTerm: term });
         get().filterProducts();
@@ -317,26 +334,44 @@ export const useProductStore = create<ProductState>()(
             return;
         }
 
-        const { products, searchTerm } = get();
-        if (!searchTerm.trim()) {
-          set({ filteredProducts: products }); 
-          return;
+        const { products, searchTerm, sortKey, sortDirection } = get();
+        let results = [...products];
+
+        // Filtering
+        if (searchTerm.trim()) {
+            const lowerCaseSearchTerm = searchTerm.toLowerCase().split(' ').filter(term => term);
+            results = results.filter((product) => {
+                const nameLower = product.name.toLowerCase();
+                const codeString = product.code.toString();
+                return lowerCaseSearchTerm.every(term =>
+                    nameLower.includes(term) || codeString.includes(term)
+                );
+            });
+        }
+        
+        // Sorting
+        if (sortKey) {
+            results.sort((a, b) => {
+                const aValue = a[sortKey];
+                const bValue = b[sortKey];
+                
+                let comparison = 0;
+                if (aValue > bValue) {
+                    comparison = 1;
+                } else if (aValue < bValue) {
+                    comparison = -1;
+                }
+                
+                return sortDirection === 'asc' ? comparison : -comparison;
+            });
         }
 
-        const lowerCaseSearchTerm = searchTerm.toLowerCase().split(' ').filter(term => term);
-        const filtered = products.filter((product) => {
-            const nameLower = product.name.toLowerCase();
-            const codeString = product.code.toString();
-            return lowerCaseSearchTerm.every(term =>
-                nameLower.includes(term) || codeString.includes(term)
-            );
-        });
-        set({ filteredProducts: filtered });
+        set({ filteredProducts: results });
       },
 
       clearSearchAndResults: () => {
           get().cleanupProductListeners();
-          set({ searchTerm: '', filteredProducts: [], products: [] });
+          set({ searchTerm: '', filteredProducts: [], products: [], sortKey: null, sortDirection: 'asc' });
       }
     }),
     { name: "ProductStore" } 

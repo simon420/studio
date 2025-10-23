@@ -13,29 +13,46 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PackageSearch, AlertCircle, Info } from 'lucide-react'; // Added Info icon
+import { PackageSearch, AlertCircle, Info, ArrowUpDown } from 'lucide-react'; // Added Info icon and ArrowUpDown
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
+import type { Product } from '@/lib/types';
 
 
 export default function SearchResults() {
-  const { isAuthenticated, userRole } = useAuthStore(); // Get authentication status and role
-  // Use selectors to get only the state needed, prevents unnecessary re-renders
+  const { isAuthenticated, userRole } = useAuthStore();
   const filteredProducts = useProductStore((state) => state.filteredProducts);
   const searchTerm = useProductStore((state) => state.searchTerm);
-  const products = useProductStore((state) => state.products); // Still needed for initial load check
+  const products = useProductStore((state) => state.products);
+  const sortKey = useProductStore((state) => state.sortKey);
+  const sortDirection = useProductStore((state) => state.sortDirection);
+  const setSortKey = useProductStore((state) => state.setSortKey);
 
-  // Effect to re-filter products when the component mounts or relevant state changes
-  // Only run filter if authenticated
   React.useEffect(() => {
     if (isAuthenticated) {
        useProductStore.getState().filterProducts();
     } else {
-        // Ensure results are cleared if user logs out while viewing
         useProductStore.getState().clearSearchAndResults();
     }
   }, [isAuthenticated, products, searchTerm]); // Depend on auth status, products list, and search term
+  
+  const handleSort = (key: keyof Product) => {
+    setSortKey(key);
+  };
+  
+  const renderSortArrow = (key: keyof Product) => {
+    if (sortKey !== key) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUpDown className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowUpDown className="ml-2 h-4 w-4" /> // Using same icon, but you could swap for explicit up/down
+    );
+  };
+
 
   return (
      <Card>
@@ -63,7 +80,12 @@ export default function SearchResults() {
                  </TableCaption>
                  <TableHeader className="sticky top-0 bg-secondary z-10">
                    <TableRow>
-                     <TableHead className="w-[30%]">Nome</TableHead>
+                     <TableHead className="w-[30%]">
+                       <Button variant="ghost" onClick={() => handleSort('name')}>
+                         Nome
+                         {renderSortArrow('name')}
+                       </Button>
+                     </TableHead>
                      <TableHead className="w-[15%]">Codice</TableHead>
                      <TableHead className="w-[15%] text-right">Prezzo</TableHead>
                      {userRole !== 'user' && (
