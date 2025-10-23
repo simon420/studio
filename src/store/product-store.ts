@@ -29,6 +29,9 @@ interface ProductState {
   filteredProducts: Product[];
   sortKey: keyof Product | null;
   sortDirection: 'asc' | 'desc';
+  superAdminSortKey: keyof Product | null;
+  superAdminSortDirection: 'asc' | 'desc';
+  setSuperAdminSortKey: (key: keyof Product | null) => void;
   setSortKey: (key: keyof Product | null) => void;
   setSearchTerm: (term: string) => void;
   addProduct: (product: Omit<Product, 'id' | 'serverId'>) => Promise<void>; 
@@ -51,6 +54,17 @@ export const useProductStore = create<ProductState>()(
       filteredProducts: [],
       sortKey: null,
       sortDirection: 'asc',
+      superAdminSortKey: null,
+      superAdminSortDirection: 'asc',
+
+      setSuperAdminSortKey: (key) => {
+        const { superAdminSortKey, superAdminSortDirection } = get();
+        if (superAdminSortKey === key) {
+          set({ superAdminSortDirection: superAdminSortDirection === 'asc' ? 'desc' : 'asc' });
+        } else {
+          set({ superAdminSortKey: key, superAdminSortDirection: 'asc' });
+        }
+      },
 
       setSortKey: (key) => {
         const { sortKey, sortDirection } = get();
@@ -356,9 +370,9 @@ export const useProductStore = create<ProductState>()(
                 const bValue = b[sortKey];
                 
                 let comparison = 0;
-                if (aValue > bValue) {
+                if (aValue! > bValue!) {
                     comparison = 1;
-                } else if (aValue < bValue) {
+                } else if (aValue! < bValue!) {
                     comparison = -1;
                 }
                 

@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Search, Edit, Trash2, Package } from 'lucide-react';
+import { Loader2, Search, Edit, Trash2, Package, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import EditProductDialog from './edit-product-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -36,7 +36,10 @@ export default function SuperAdminProductsList() {
   const { 
     products, 
     superAdminUpdateProduct, 
-    superAdminDeleteProduct 
+    superAdminDeleteProduct,
+    superAdminSortKey,
+    superAdminSortDirection,
+    setSuperAdminSortKey,
   } = useProductStore();
   const { isLoading: authIsLoading } = useAuthStore();
   
@@ -53,12 +56,10 @@ export default function SuperAdminProductsList() {
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
 
-  // The listener in product-store now handles fetching, so we just check for loading state.
   React.useEffect(() => {
     if (authIsLoading) {
       setIsLoading(true);
     } else {
-      // Data is loaded via real-time listeners, so if products are present, we're not "loading"
       setIsLoading(products.length === 0 && authIsLoading);
     }
   }, [authIsLoading, products]);
@@ -68,21 +69,54 @@ export default function SuperAdminProductsList() {
     setSearchTerm(event.target.value);
   };
 
-  const filteredProducts = React.useMemo(() => {
-    if (!searchTerm.trim()) {
-      return products;
+  const handleSort = (key: keyof Product) => {
+    setSuperAdminSortKey(key);
+  };
+
+  const renderSortArrow = (key: keyof Product) => {
+    if (superAdminSortKey !== key) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />;
+    }
+    return superAdminSortDirection === 'asc' ? (
+      <ArrowUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4" />
+    );
+  };
+
+  const filteredAndSortedProducts = React.useMemo(() => {
+    let filtered = [...products];
+
+    if (searchTerm.trim()) {
+      const lowerCaseSearchTerm = searchTerm.toLowerCase().split(' ').filter(term => term);
+      filtered = filtered.filter((product) => {
+        const nameLower = product.name.toLowerCase();
+        const codeString = product.code.toString();
+        const emailLower = product.addedByEmail?.toLowerCase() || '';
+        return lowerCaseSearchTerm.every(term =>
+          nameLower.includes(term) || codeString.includes(term) || emailLower.includes(term)
+        );
+      });
     }
 
-    const lowerCaseSearchTerm = searchTerm.toLowerCase().split(' ').filter(term => term);
-    return products.filter((product) => {
-      const nameLower = product.name.toLowerCase();
-      const codeString = product.code.toString();
-      const emailLower = product.addedByEmail?.toLowerCase() || '';
-      return lowerCaseSearchTerm.every(term =>
-        nameLower.includes(term) || codeString.includes(term) || emailLower.includes(term)
-      );
-    });
-  }, [products, searchTerm]);
+    if (superAdminSortKey) {
+        filtered.sort((a, b) => {
+            const aValue = a[superAdminSortKey!];
+            const bValue = b[superAdminSortKey!];
+            
+            let comparison = 0;
+            if (aValue! > bValue!) {
+                comparison = 1;
+            } else if (aValue! < bValue!) {
+                comparison = -1;
+            }
+            
+            return superAdminSortDirection === 'asc' ? comparison : -comparison;
+        });
+    }
+
+    return filtered;
+  }, [products, searchTerm, superAdminSortKey, superAdminSortDirection]);
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
@@ -164,22 +198,42 @@ export default function SuperAdminProductsList() {
       <ScrollArea className="h-[400px] rounded-md border">
         <Table>
           <TableCaption>
-            {filteredProducts.length > 0
-              ? `Mostrando ${filteredProducts.length} prodotti nel sistema.`
+            {filteredAndSortedProducts.length > 0
+              ? `Mostrando ${filteredAndSortedProducts.length} prodotti nel sistema.`
               : 'Nessun prodotto nel sistema o nessun risultato per la ricerca.'}
           </TableCaption>
           <TableHeader className="sticky top-0 bg-secondary z-10">
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Codice</TableHead>
-              <TableHead>Prezzo</TableHead>
-              <TableHead>Shard</TableHead>
-              <TableHead>Aggiunto da</TableHead>
+              <TableHead>
+                <Button variant="ghost" onClick={() => handleSort('name')}>
+                  Nome {renderSortArrow('name')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                 <Button variant="ghost" onClick={() => handleSort('code')}>
+                  Codice {renderSortArrow('code')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                 <Button variant="ghost" onClick={() => handleSort('price')}>
+                  Prezzo {renderSortArrow('price')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                 <Button variant="ghost" onClick={() => handleSort('serverId')}>
+                  Shard {renderSortArrow('serverId')}
+                </Button>
+              </TableHead>
+              <TableHead>
+                 <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
+                  Aggiunto da {renderSortArrow('addedByEmail')}
+                </Button>
+              </TableHead>
               <TableHead className="text-center">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredProducts.length === 0 ? (
+            {filteredAndSortedProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -193,7 +247,7 @@ export default function SuperAdminProductsList() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredProducts.map((product) => (
+              filteredAndSortedProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.code}</TableCell>
