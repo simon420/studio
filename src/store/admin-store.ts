@@ -14,6 +14,9 @@ let listenerAttachTime: number | null = null; // To track when the listener was 
 interface AdminState {
   pendingRequests: AdminRequest[];
   isLoading: boolean;
+  sortKey: keyof AdminRequest;
+  sortDirection: 'asc' | 'desc';
+  setSortKey: (key: keyof AdminRequest) => void;
   listenForAdminRequests: () => void;
   cleanupAdminListener: () => void;
   approveAdminRequest: (requestId: string) => Promise<void>;
@@ -41,6 +44,17 @@ export const useAdminStore = create<AdminState>()(
     (set, get) => ({
       pendingRequests: [],
       isLoading: true,
+      sortKey: 'requestedAt',
+      sortDirection: 'desc',
+
+      setSortKey: (key) => {
+        const { sortKey, sortDirection } = get();
+        if (sortKey === key) {
+          set({ sortDirection: sortDirection === 'asc' ? 'desc' : 'asc' });
+        } else {
+          set({ sortKey: key, sortDirection: 'asc' });
+        }
+      },
 
       listenForAdminRequests: () => {
         const { addNotification } = useNotificationStore.getState();
@@ -78,10 +92,23 @@ export const useAdminStore = create<AdminState>()(
               ...docSnap.data()
           } as AdminRequest));
           
+          const { sortKey, sortDirection } = get();
           requestsData.sort((a, b) => {
-            const dateA = (a.requestedAt as Timestamp)?.toDate().getTime() || 0;
-            const dateB = (b.requestedAt as Timestamp)?.toDate().getTime() || 0;
-            return dateB - dateA;
+            const aValue = a[sortKey];
+            const bValue = b[sortKey];
+
+            let comparison = 0;
+            if (aValue instanceof Timestamp && bValue instanceof Timestamp) {
+                comparison = aValue.toMillis() - bValue.toMillis();
+            } else if (typeof aValue === 'string' && typeof bValue === 'string') {
+                comparison = aValue.localeCompare(bValue);
+            } else if (aValue! > bValue!) {
+                comparison = 1;
+            } else if (aValue! < bValue!) {
+                comparison = -1;
+            }
+
+            return sortDirection === 'asc' ? comparison : -comparison;
           });
 
           set({ pendingRequests: requestsData, isLoading: false });
@@ -138,8 +165,21 @@ if (typeof window !== 'undefined') {
                  console.log("AdminStore: Utente non è più super-admin. Pulisco listener richieste.");
                  adminStore.cleanupAdminListener();
             }
-        }
+        },
+        // The subscription should be re-triggered when the store is updated.
+        // We need to re-evaluate the condition whenever the sort key/direction changes.
+        (state) => [state.sortKey, state.sortDirection]
     );
+
+    // Re-run the listener whenever sort configuration changes
+    useAdminStore.subscribe((state, prevState) => {
+        if (state.sortKey !== prevState.sortKey || state.sortDirection !== prevState.sortDirection) {
+            const { userRole, isAuthenticated, isLoading } = useAuthStore.getState();
+            if (isAuthenticated && !isLoading && userRole === 'super-admin') {
+                useAdminStore.getState().listenForAdminRequests();
+            }
+        }
+    });
 
     // Initial check on page load
     const initialAuth = useAuthStore.getState();

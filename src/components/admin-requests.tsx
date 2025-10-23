@@ -13,11 +13,12 @@ import {
   TableCaption,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Loader2, UserCheck, UserX, Users } from 'lucide-react';
+import { Loader2, UserCheck, UserX, Users, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { ScrollArea } from './ui/scroll-area';
+import type { AdminRequest } from '@/lib/types';
 
 export default function AdminRequests() {
   const {
@@ -25,12 +26,14 @@ export default function AdminRequests() {
     isLoading,
     approveAdminRequest,
     declineAdminRequest,
+    sortKey,
+    sortDirection,
+    setSortKey,
   } = useAdminStore();
   const { toast } = useToast();
   const [processingId, setProcessingId] = React.useState<string | null>(null);
 
   // The listener is now handled in the store, so this component just displays the data.
-  // The useEffect for fetching is no longer needed here.
 
   const handleApprove = async (requestId: string, email: string | null) => {
     setProcessingId(requestId);
@@ -73,6 +76,21 @@ export default function AdminRequests() {
     }
   };
 
+  const handleSort = (key: keyof AdminRequest) => {
+    setSortKey(key);
+  };
+
+  const renderSortArrow = (key: keyof AdminRequest) => {
+    if (sortKey !== key) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />;
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4" />
+    );
+  };
+
   if (isLoading && pendingRequests.length === 0) {
     return (
       <div className="flex items-center justify-center h-[150px]">
@@ -90,8 +108,16 @@ export default function AdminRequests() {
             </TableCaption>
             <TableHeader className="sticky top-0 bg-secondary z-10">
                 <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Data Richiesta</TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('email')}>
+                        Email {renderSortArrow('email')}
+                    </Button>
+                </TableHead>
+                <TableHead>
+                    <Button variant="ghost" onClick={() => handleSort('requestedAt')}>
+                        Data Richiesta {renderSortArrow('requestedAt')}
+                    </Button>
+                </TableHead>
                 <TableHead className="text-center">Azioni</TableHead>
                 </TableRow>
             </TableHeader>
