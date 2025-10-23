@@ -18,7 +18,6 @@ function getShard(productCode: number): { shardId: string; shardDb: Firestore } 
 
 // Keep track of unsubscribe functions for real-time listeners
 let productListeners: Unsubscribe[] = [];
-let isInitialLoad = true; // Flag to differentiate initial data load from subsequent changes
 
 interface ProductState {
   searchTerm: string;
@@ -74,20 +73,40 @@ export const useProductStore = create<ProductState>()(
                   // Check for added/updated products
                   newProductList.forEach(newProduct => {
                       const oldProduct = oldProductMap.get(newProduct.id);
+                      // Case 1: New product added by someone else
                       if (!oldProduct && newProduct.addedByUid !== currentUserId) {
                           addNotification({
                               type: 'product_added',
                               message: `Nuovo prodotto: "${newProduct.name}" aggiunto da ${newProduct.addedByEmail}.`,
                           });
-                      } else if (oldProduct && JSON.stringify(oldProduct) !== JSON.stringify(newProduct) && newProduct.addedByUid !== currentUserId) {
-                          addNotification({
-                              type: 'product_updated',
-                              message: `Prodotto "${newProduct.name}" aggiornato.`,
-                          });
+                      // Case 2: Existing product was updated
+                      } else if (oldProduct) {
+                          const hasChanged = JSON.stringify(oldProduct) !== JSON.stringify(newProduct);
+                          // Notify if the product changed AND...
+                          // (A) the current user is the owner, but someone else (super-admin) changed it
+                          // OR (B) the current user is NOT the owner (sees a general update)
+                          if (hasChanged) {
+                              const isOwner = oldProduct.addedByUid === currentUserId;
+                              const modifierIsSomeoneElse = newProduct.addedByUid !== currentUserId;
+
+                              if (isOwner && modifierIsSomeoneElse) {
+                                  // This is my product, but someone else (super-admin) just modified it
+                                  addNotification({
+                                    type: 'product_updated',
+                                    message: `Il tuo prodotto "${oldProduct.name}" è stato aggiornato da ${newProduct.addedByEmail}.`,
+                                  });
+                              } else if (!isOwner) {
+                                  // This is not my product, I'm just seeing a general update
+                                  addNotification({
+                                      type: 'product_updated',
+                                      message: `Prodotto "${newProduct.name}" aggiornato.`,
+                                  });
+                              }
+                          }
                       }
                   });
       
-                  // Check for deleted products
+                  // Check for deleted products by someone else
                   oldProducts.forEach(oldProduct => {
                       if (!newProductMap.has(oldProduct.id) && oldProduct.addedByUid !== currentUserId) {
                           addNotification({
@@ -218,7 +237,7 @@ export const useProductStore = create<ProductState>()(
       },
 
       superAdminUpdateProduct: async (productId, serverId, updatedData) => {
-        const { userRole, isAuthenticated } = useAuthStore.getState();
+        const { userRole, isAuthenticated, email, uid } = useAuthStore.getState();
         if (!isAuthenticated || userRole !== 'super-admin') {
           throw new Error("Solo i super-amministratori possono eseguire questa azione.");
         }
@@ -229,7 +248,13 @@ export const useProductStore = create<ProductState>()(
         }
 
         const productDocRef = doc(shardDb, 'products', productId);
-        await updateDoc(productDocRef, updatedData);
+        // When super-admin reassigns, they become the new owner
+        const dataToUpdate = { ...updatedData };
+        if (dataToUpdate.addedByUid) {
+            dataToUpdate.addedByEmail = email; // Ensure email is also updated on reassign
+        }
+
+        await updateDoc(productDocRef, dataToUpdate);
       },
 
       superAdminDeleteProduct: async (productId, serverId) => {
