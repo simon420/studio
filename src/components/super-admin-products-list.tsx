@@ -181,7 +181,7 @@ export default function SuperAdminProductsList() {
       });
       setIsDeleteDialogOpen(false);
       setProductToDelete(null);
-    } catch (error: any) => {
+    } catch (error: any) {
       console.error('Errore eliminazione prodotto (Super Admin):', error);
       toast({
         title: 'Eliminazione Fallita',
