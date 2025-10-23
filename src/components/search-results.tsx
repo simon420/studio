@@ -92,7 +92,12 @@ export default function SearchResults() {
                          {renderSortArrow('code')}
                        </Button>
                      </TableHead>
-                     <TableHead className="w-[15%] text-right">Prezzo</TableHead>
+                     <TableHead className="w-[15%] text-right">
+                       <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">
+                         Prezzo
+                         {renderSortArrow('price')}
+                       </Button>
+                     </TableHead>
                      {userRole !== 'user' && (
                         <TableHead className="w-[20%]">Server</TableHead>
                      )}
