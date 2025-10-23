@@ -21,6 +21,7 @@ import { PackageSearch, AlertCircle, Info, ArrowUpDown, ArrowUp, ArrowDown } fro
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
 import type { Product } from '@/lib/types';
 
+const ITEMS_PER_PAGE = 10;
 
 export default function SearchResults() {
   const { isAuthenticated, userRole } = useAuthStore();
@@ -30,6 +31,7 @@ export default function SearchResults() {
   const sortKey = useProductStore((state) => state.sortKey);
   const sortDirection = useProductStore((state) => state.sortDirection);
   const setSortKey = useProductStore((state) => state.setSortKey);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   React.useEffect(() => {
     if (isAuthenticated) {
@@ -41,6 +43,7 @@ export default function SearchResults() {
   
   const handleSort = (key: keyof Product) => {
     setSortKey(key);
+    setCurrentPage(1);
   };
   
   const renderSortArrow = (key: keyof Product) => {
@@ -53,6 +56,18 @@ export default function SearchResults() {
       <ArrowDown className="ml-2 h-4 w-4" />
     );
   };
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filteredProducts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
 
   return (
@@ -72,12 +87,13 @@ export default function SearchResults() {
              </div>
            ) : (
              // Render table when authenticated
+             <>
              <ScrollArea className="h-[350px] rounded-md border">
                 <div className="overflow-x-auto">
                     <Table>
                     <TableCaption className="py-4">
                         {filteredProducts.length > 0
-                        ? `Mostrando ${filteredProducts.length} prodotto(i).`
+                        ? `Mostrando ${paginatedProducts.length} di ${filteredProducts.length} prodotto(i).`
                         : ''}
                     </TableCaption>
                     <TableHeader className="sticky top-0 bg-secondary z-10">
@@ -117,8 +133,8 @@ export default function SearchResults() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {filteredProducts.length > 0 ? (
-                        filteredProducts.map((product) => (
+                        {paginatedProducts.length > 0 ? (
+                        paginatedProducts.map((product) => (
                             <TableRow key={product.id}>
                             <TableCell className="font-medium">{product.name}</TableCell>
                             <TableCell>{product.code}</TableCell>
@@ -158,8 +174,34 @@ export default function SearchResults() {
                     </Table>
                 </div>
              </ScrollArea>
+              {totalPages > 1 && (
+                <div className="flex items-center justify-end space-x-2 py-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    Precedente
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Pagina {currentPage} di {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Successivo
+                  </Button>
+                </div>
+              )}
+            </>
            )}
         </CardContent>
      </Card>
   );
 }
+
+    

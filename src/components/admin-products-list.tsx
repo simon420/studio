@@ -32,6 +32,8 @@ import EditProductDialog from './edit-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminProductsList() {
   const { uid, isLoading: authIsLoading } = useAuthStore();
   const { 
@@ -55,6 +57,7 @@ export default function AdminProductsList() {
 
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
 
   // The listener in product-store now handles fetching, so we just check for loading state.
@@ -71,6 +74,7 @@ export default function AdminProductsList() {
 
   const handleSort = (key: keyof Product) => {
     setAdminListSortKey(key);
+    setCurrentPage(1);
   };
 
   const renderSortArrow = (key: keyof Product) => {
@@ -86,6 +90,7 @@ export default function AdminProductsList() {
 
   const handleAdminSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setAdminSearchTerm(event.target.value);
+    setCurrentPage(1);
   };
 
   const filteredAndSortedAdminProducts = React.useMemo(() => {
@@ -122,6 +127,18 @@ export default function AdminProductsList() {
 
     return userProducts;
   }, [uid, products, adminSearchTerm, adminListSortKey, adminListSortDirection]);
+
+  const totalPages = Math.ceil(filteredAndSortedAdminProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filteredAndSortedAdminProducts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
@@ -210,7 +227,7 @@ export default function AdminProductsList() {
             <Table>
             <TableCaption className="py-4">
                 {filteredAndSortedAdminProducts.length > 0
-                ? `Mostrando ${filteredAndSortedAdminProducts.length} dei tuoi prodotti.`
+                ? `Mostrando ${paginatedProducts.length} di ${filteredAndSortedAdminProducts.length} prodotti.`
                 : adminSearchTerm && filteredAndSortedAdminProducts.length === 0
                 ? '' 
                 : 'Non hai ancora aggiunto nessun prodotto.'}
@@ -233,7 +250,7 @@ export default function AdminProductsList() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {filteredAndSortedAdminProducts.length === 0 ? (
+                {paginatedProducts.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -247,7 +264,7 @@ export default function AdminProductsList() {
                     </TableCell>
                 </TableRow>
                 ) : (
-                filteredAndSortedAdminProducts.map((product) => (
+                paginatedProducts.map((product) => (
                     <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.code}</TableCell>
@@ -288,6 +305,31 @@ export default function AdminProductsList() {
             </Table>
         </div>
       </ScrollArea>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Precedente
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Pagina {currentPage} di {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Successivo
+          </Button>
+        </div>
+      )}
+
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}
@@ -324,3 +366,5 @@ export default function AdminProductsList() {
     </div>
   );
 }
+
+    

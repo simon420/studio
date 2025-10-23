@@ -33,6 +33,8 @@ import EditProductDialog from './edit-product-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 
+const ITEMS_PER_PAGE = 10;
+
 export default function SuperAdminProductsList() {
   const { 
     products, 
@@ -56,6 +58,7 @@ export default function SuperAdminProductsList() {
 
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isUpdating, setIsUpdating] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   React.useEffect(() => {
     if (authIsLoading) {
@@ -68,10 +71,12 @@ export default function SuperAdminProductsList() {
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(event.target.value);
+    setCurrentPage(1);
   };
 
   const handleSort = (key: keyof Product) => {
     setSuperAdminSortKey(key);
+    setCurrentPage(1);
   };
 
   const renderSortArrow = (key: keyof Product) => {
@@ -119,6 +124,19 @@ export default function SuperAdminProductsList() {
     return filtered;
   }, [products, searchTerm, superAdminSortKey, superAdminSortDirection]);
 
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / ITEMS_PER_PAGE);
+  const paginatedProducts = filteredAndSortedProducts.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
     setIsEditDialogOpen(true);
@@ -163,7 +181,7 @@ export default function SuperAdminProductsList() {
       });
       setIsDeleteDialogOpen(false);
       setProductToDelete(null);
-    } catch (error: any) {
+    } catch (error: any) => {
       console.error('Errore eliminazione prodotto (Super Admin):', error);
       toast({
         title: 'Eliminazione Fallita',
@@ -201,7 +219,7 @@ export default function SuperAdminProductsList() {
             <Table>
             <TableCaption>
                 {filteredAndSortedProducts.length > 0
-                ? `Mostrando ${filteredAndSortedProducts.length} prodotti nel sistema.`
+                ? `Mostrando ${paginatedProducts.length} di ${filteredAndSortedProducts.length} prodotti.`
                 : 'Nessun prodotto nel sistema o nessun risultato per la ricerca.'}
             </TableCaption>
             <TableHeader className="sticky top-0 bg-secondary z-10">
@@ -235,7 +253,7 @@ export default function SuperAdminProductsList() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {filteredAndSortedProducts.length === 0 ? (
+                {paginatedProducts.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={6} className="h-24 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -249,7 +267,7 @@ export default function SuperAdminProductsList() {
                     </TableCell>
                 </TableRow>
                 ) : (
-                filteredAndSortedProducts.map((product) => (
+                paginatedProducts.map((product) => (
                     <TableRow key={product.id}>
                     <TableCell className="font-medium">{product.name}</TableCell>
                     <TableCell>{product.code}</TableCell>
@@ -284,6 +302,31 @@ export default function SuperAdminProductsList() {
             </Table>
         </div>
       </ScrollArea>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Precedente
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Pagina {currentPage} di {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Successivo
+          </Button>
+        </div>
+      )}
+
       {editingProduct && (
         <EditProductDialog
           product={editingProduct}
@@ -319,3 +362,5 @@ export default function SuperAdminProductsList() {
     </div>
   );
 }
+
+    

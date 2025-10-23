@@ -31,6 +31,8 @@ import { Badge } from './ui/badge';
 import { useAuthStore } from '@/store/auth-store';
 import { Timestamp } from 'firebase/firestore';
 
+const ITEMS_PER_PAGE = 10;
+
 type DeletionAction = 'delete' | 'reassign';
 
 export default function UserManagement() {
@@ -40,6 +42,7 @@ export default function UserManagement() {
   
   const [userToDelete, setUserToDelete] = React.useState<ClientUser | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [currentPage, setCurrentPage] = React.useState(1);
   
   const openDeleteDialog = (user: ClientUser) => {
     if (user.uid === currentSuperAdminUid) {
@@ -89,6 +92,7 @@ export default function UserManagement() {
 
   const handleSort = (key: keyof ClientUser) => {
     setSortKey(key);
+    setCurrentPage(1);
   };
 
   const renderSortArrow = (key: keyof ClientUser) => {
@@ -126,6 +130,19 @@ export default function UserManagement() {
     }
     return sorted;
   }, [users, sortKey, sortDirection]);
+
+  const totalPages = Math.ceil(sortedUsers.length / ITEMS_PER_PAGE);
+  const paginatedUsers = sortedUsers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
 
   const renderDialogContent = () => {
     if (!userToDelete) return null;
@@ -218,7 +235,7 @@ export default function UserManagement() {
         <div className="overflow-x-auto">
             <Table>
             <TableCaption>
-                {sortedUsers.length > 0 ? `Mostrando ${sortedUsers.length} utenti nel sistema.` : 'Nessun utente trovato.'}
+                {sortedUsers.length > 0 ? `Mostrando ${paginatedUsers.length} di ${sortedUsers.length} utenti.` : 'Nessun utente trovato.'}
             </TableCaption>
             <TableHeader className="sticky top-0 bg-secondary z-10">
                 <TableRow>
@@ -238,7 +255,7 @@ export default function UserManagement() {
                 </TableRow>
             </TableHeader>
             <TableBody>
-                {sortedUsers.length === 0 ? (
+                {paginatedUsers.length === 0 ? (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
                     <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -248,7 +265,7 @@ export default function UserManagement() {
                     </TableCell>
                 </TableRow>
                 ) : (
-                sortedUsers.map((user) => (
+                paginatedUsers.map((user) => (
                     <TableRow key={user.uid}>
                     <TableCell className="font-medium">{user.email}</TableCell>
                     <TableCell>
@@ -288,9 +305,35 @@ export default function UserManagement() {
         </div>
       </ScrollArea>
 
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Precedente
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Pagina {currentPage} di {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Successivo
+          </Button>
+        </div>
+      )}
+
       <AlertDialog open={!!userToDelete} onOpenChange={(isOpen) => !isOpen && setUserToDelete(null)}>
         {renderDialogContent()}
       </AlertDialog>
     </div>
   );
 }
+
+    

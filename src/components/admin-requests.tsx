@@ -20,6 +20,8 @@ import { it } from 'date-fns/locale';
 import { ScrollArea } from './ui/scroll-area';
 import type { AdminRequest } from '@/lib/types';
 
+const ITEMS_PER_PAGE = 10;
+
 export default function AdminRequests() {
   const {
     pendingRequests,
@@ -32,6 +34,7 @@ export default function AdminRequests() {
   } = useAdminStore();
   const { toast } = useToast();
   const [processingId, setProcessingId] = React.useState<string | null>(null);
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   // The listener is now handled in the store, so this component just displays the data.
 
@@ -78,6 +81,7 @@ export default function AdminRequests() {
 
   const handleSort = (key: keyof AdminRequest) => {
     setSortKey(key);
+    setCurrentPage(1);
   };
 
   const renderSortArrow = (key: keyof AdminRequest) => {
@@ -91,6 +95,19 @@ export default function AdminRequests() {
     );
   };
 
+  const totalPages = Math.ceil(pendingRequests.length / ITEMS_PER_PAGE);
+  const paginatedRequests = pendingRequests.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+
   if (isLoading && pendingRequests.length === 0) {
     return (
       <div className="flex items-center justify-center h-[150px]">
@@ -101,11 +118,12 @@ export default function AdminRequests() {
   }
 
   return (
+    <div className="space-y-4">
     <ScrollArea className="h-[260px] rounded-md border">
         <div className="overflow-x-auto">
             <Table>
                 <TableCaption>
-                    {pendingRequests.length > 0 ? `${pendingRequests.length} richiesta(e) in attesa.` : 'Nessuna richiesta di amministrazione in attesa.'}
+                    {pendingRequests.length > 0 ? `Mostrando ${paginatedRequests.length} di ${pendingRequests.length} richiesta(e).` : 'Nessuna richiesta di amministrazione in attesa.'}
                 </TableCaption>
                 <TableHeader className="sticky top-0 bg-secondary z-10">
                     <TableRow>
@@ -123,7 +141,7 @@ export default function AdminRequests() {
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {pendingRequests.length === 0 ? (
+                    {paginatedRequests.length === 0 ? (
                     <TableRow>
                         <TableCell colSpan={3} className="h-24 text-center">
                             <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -133,7 +151,7 @@ export default function AdminRequests() {
                         </TableCell>
                     </TableRow>
                     ) : (
-                    pendingRequests.map((request) => (
+                    paginatedRequests.map((request) => (
                         <TableRow key={request.id}>
                         <TableCell className="font-medium">{request.email}</TableCell>
                         <TableCell>
@@ -170,5 +188,31 @@ export default function AdminRequests() {
             </Table>
         </div>
     </ScrollArea>
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+          >
+            Precedente
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Pagina {currentPage} di {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+          >
+            Successivo
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }
+
+    
