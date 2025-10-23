@@ -71,7 +71,7 @@ export default function SearchResults() {
              </div>
            ) : (
              // Render table when authenticated
-             <ScrollArea className="h-[350px] rounded-md border"> {/* Adjusted height due to input */}
+             <ScrollArea className="h-[350px] rounded-md border">
                <Table>
                  <TableCaption className="py-4">
                    {filteredProducts.length > 0
@@ -106,7 +106,12 @@ export default function SearchResults() {
                           </Button>
                         </TableHead>
                      )}
-                     <TableHead className="w-[20%]">Aggiunto Da</TableHead>
+                     <TableHead className="w-[20%]">
+                       <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
+                         Aggiunto Da
+                         {renderSortArrow('addedByEmail')}
+                       </Button>
+                     </TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
