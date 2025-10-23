@@ -29,9 +29,12 @@ interface ProductState {
   filteredProducts: Product[];
   sortKey: keyof Product | null;
   sortDirection: 'asc' | 'desc';
+  adminListSortKey: keyof Product | null;
+  adminListSortDirection: 'asc' | 'desc';
   superAdminSortKey: keyof Product | null;
   superAdminSortDirection: 'asc' | 'desc';
   setSuperAdminSortKey: (key: keyof Product | null) => void;
+  setAdminListSortKey: (key: keyof Product | null) => void;
   setSortKey: (key: keyof Product | null) => void;
   setSearchTerm: (term: string) => void;
   addProduct: (product: Omit<Product, 'id' | 'serverId'>) => Promise<void>; 
@@ -54,6 +57,8 @@ export const useProductStore = create<ProductState>()(
       filteredProducts: [],
       sortKey: null,
       sortDirection: 'asc',
+      adminListSortKey: null,
+      adminListSortDirection: 'asc',
       superAdminSortKey: null,
       superAdminSortDirection: 'asc',
 
@@ -63,6 +68,15 @@ export const useProductStore = create<ProductState>()(
           set({ superAdminSortDirection: superAdminSortDirection === 'asc' ? 'desc' : 'asc' });
         } else {
           set({ superAdminSortKey: key, superAdminSortDirection: 'asc' });
+        }
+      },
+
+      setAdminListSortKey: (key) => {
+        const { adminListSortKey, adminListSortDirection } = get();
+        if (adminListSortKey === key) {
+          set({ adminListSortDirection: adminListSortDirection === 'asc' ? 'desc' : 'asc' });
+        } else {
+          set({ adminListSortKey: key, adminListSortDirection: 'asc' });
         }
       },
 

@@ -26,7 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PackagePlus, Loader2, Search, Edit, Trash2 } from 'lucide-react';
+import { PackagePlus, Loader2, Search, Edit, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import type { Product } from '@/lib/types';
 import EditProductDialog from './edit-product-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -34,9 +34,14 @@ import { Badge } from '@/components/ui/badge';
 
 export default function AdminProductsList() {
   const { uid, isLoading: authIsLoading } = useAuthStore();
-  const products = useProductStore((state) => state.products);
-  const updateProduct = useProductStore((state) => state.updateProductInStoreAndFirestore);
-  const deleteProduct = useProductStore((state) => state.deleteProductFromStoreAndFirestore);
+  const { 
+    products, 
+    updateProductInStoreAndFirestore, 
+    deleteProductFromStoreAndFirestore,
+    adminListSortKey,
+    adminListSortDirection,
+    setAdminListSortKey
+  } = useProductStore();
   
   const { toast } = useToast();
   const [isLoadingProducts, setIsLoadingProducts] = React.useState(true);
@@ -64,29 +69,59 @@ export default function AdminProductsList() {
     }
   }, [authIsLoading, products]);
 
+  const handleSort = (key: keyof Product) => {
+    setAdminListSortKey(key);
+  };
+
+  const renderSortArrow = (key: keyof Product) => {
+    if (adminListSortKey !== key) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />;
+    }
+    return adminListSortDirection === 'asc' ? (
+      <ArrowUp className="ml-2 h-4 w-4" />
+    ) : (
+      <ArrowDown className="ml-2 h-4 w-4" />
+    );
+  };
 
   const handleAdminSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setAdminSearchTerm(event.target.value);
   };
 
-  const filteredAdminProducts = React.useMemo(() => {
+  const filteredAndSortedAdminProducts = React.useMemo(() => {
     if (!uid || products.length === 0) return [];
     
     let userProducts = products.filter((product) => product.addedByUid === uid);
 
-    if (!adminSearchTerm.trim()) {
-      return userProducts;
+    if (adminSearchTerm.trim()) {
+        const lowerCaseSearchTerm = adminSearchTerm.toLowerCase().split(' ').filter(term => term);
+        userProducts = userProducts.filter((product) => {
+            const nameLower = product.name.toLowerCase();
+            const codeString = product.code.toString();
+            return lowerCaseSearchTerm.every(term =>
+                nameLower.includes(term) || codeString.includes(term)
+            );
+        });
     }
 
-    const lowerCaseSearchTerm = adminSearchTerm.toLowerCase().split(' ').filter(term => term);
-    return userProducts.filter((product) => {
-      const nameLower = product.name.toLowerCase();
-      const codeString = product.code.toString();
-      return lowerCaseSearchTerm.every(term =>
-        nameLower.includes(term) || codeString.includes(term)
-      );
-    });
-  }, [uid, products, adminSearchTerm]);
+    if (adminListSortKey) {
+        userProducts.sort((a, b) => {
+            const aValue = a[adminListSortKey!];
+            const bValue = b[adminListSortKey!];
+            
+            let comparison = 0;
+            if (aValue! > bValue!) {
+                comparison = 1;
+            } else if (aValue! < bValue!) {
+                comparison = -1;
+            }
+            
+            return adminListSortDirection === 'asc' ? comparison : -comparison;
+        });
+    }
+
+    return userProducts;
+  }, [uid, products, adminSearchTerm, adminListSortKey, adminListSortDirection]);
 
   const handleEdit = (product: Product) => {
     setEditingProduct(product);
@@ -97,7 +132,7 @@ export default function AdminProductsList() {
     if (!editingProduct || !editingProduct.serverId) return;
     setIsUpdating(true);
     try {
-      await updateProduct(editingProduct.id, editingProduct.serverId, updatedData);
+      await updateProductInStoreAndFirestore(editingProduct.id, editingProduct.serverId, updatedData);
       toast({
         title: 'Prodotto Aggiornato',
         description: `"${updatedData.name || editingProduct.name}" è stato aggiornato.`,
@@ -125,7 +160,7 @@ export default function AdminProductsList() {
     if (!productToDelete || !productToDelete.serverId) return;
     setIsDeleting(true);
     try {
-      await deleteProduct(productToDelete.id, productToDelete.serverId);
+      await deleteProductFromStoreAndFirestore(productToDelete.id, productToDelete.serverId);
       toast({
         title: 'Prodotto Eliminato',
         description: `"${productToDelete.name}" è stato eliminato con successo.`,
@@ -173,23 +208,31 @@ export default function AdminProductsList() {
       <ScrollArea className="h-[260px] rounded-md border">
         <Table>
           <TableCaption className="py-4">
-            {filteredAdminProducts.length > 0
-              ? `Mostrando ${filteredAdminProducts.length} dei tuoi prodotti.`
-              : adminSearchTerm && filteredAdminProducts.length === 0
+            {filteredAndSortedAdminProducts.length > 0
+              ? `Mostrando ${filteredAndSortedAdminProducts.length} dei tuoi prodotti.`
+              : adminSearchTerm && filteredAndSortedAdminProducts.length === 0
               ? '' 
               : 'Non hai ancora aggiunto nessun prodotto.'}
           </TableCaption>
           <TableHeader className="sticky top-0 bg-secondary z-10">
             <TableRow>
-              <TableHead className="w-[30%]">Nome</TableHead>
-              <TableHead className="w-[15%]">Codice</TableHead>
-              <TableHead className="w-[15%] text-right">Prezzo</TableHead>
-              <TableHead className="w-[20%]">Server</TableHead>
+              <TableHead className="w-[30%]">
+                 <Button variant="ghost" onClick={() => handleSort('name')}>Nome {renderSortArrow('name')}</Button>
+              </TableHead>
+              <TableHead className="w-[15%]">
+                 <Button variant="ghost" onClick={() => handleSort('code')}>Codice {renderSortArrow('code')}</Button>
+              </TableHead>
+              <TableHead className="w-[15%]">
+                 <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">Prezzo {renderSortArrow('price')}</Button>
+              </TableHead>
+              <TableHead className="w-[20%]">
+                 <Button variant="ghost" onClick={() => handleSort('serverId')}>Server {renderSortArrow('serverId')}</Button>
+              </TableHead>
               <TableHead className="w-[20%] text-center">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAdminProducts.length === 0 ? (
+            {filteredAndSortedAdminProducts.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -203,7 +246,7 @@ export default function AdminProductsList() {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredAdminProducts.map((product) => (
+              filteredAndSortedAdminProducts.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{product.code}</TableCell>
