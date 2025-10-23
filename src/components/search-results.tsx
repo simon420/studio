@@ -16,7 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { PackageSearch, AlertCircle, Info, ArrowUpDown } from 'lucide-react'; // Added Info icon and ArrowUpDown
+import { PackageSearch, AlertCircle, Info, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'; // Added Info icon and ArrowUpDown
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // Import Card components
 import type { Product } from '@/lib/types';
 
@@ -36,7 +36,7 @@ export default function SearchResults() {
     } else {
         useProductStore.getState().clearSearchAndResults();
     }
-  }, [isAuthenticated, products, searchTerm]); // Depend on auth status, products list, and search term
+  }, [isAuthenticated, products, searchTerm, sortKey, sortDirection]); // Depend on auth status, products list, and search term
   
   const handleSort = (key: keyof Product) => {
     setSortKey(key);
@@ -47,9 +47,9 @@ export default function SearchResults() {
       return <ArrowUpDown className="ml-2 h-4 w-4 text-muted-foreground/50" />;
     }
     return sortDirection === 'asc' ? (
-      <ArrowUpDown className="ml-2 h-4 w-4" />
+      <ArrowUp className="ml-2 h-4 w-4" />
     ) : (
-      <ArrowUpDown className="ml-2 h-4 w-4" /> // Using same icon, but you could swap for explicit up/down
+      <ArrowDown className="ml-2 h-4 w-4" />
     );
   };
 
