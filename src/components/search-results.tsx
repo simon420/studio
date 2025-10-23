@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -72,88 +73,90 @@ export default function SearchResults() {
            ) : (
              // Render table when authenticated
              <ScrollArea className="h-[350px] rounded-md border">
-               <Table>
-                 <TableCaption className="py-4">
-                   {filteredProducts.length > 0
-                     ? `Mostrando ${filteredProducts.length} prodotto(i).`
-                     : ''}
-                 </TableCaption>
-                 <TableHeader className="sticky top-0 bg-secondary z-10">
-                   <TableRow>
-                     <TableHead className="w-[30%]">
-                       <Button variant="ghost" onClick={() => handleSort('name')}>
-                         Nome
-                         {renderSortArrow('name')}
-                       </Button>
-                     </TableHead>
-                     <TableHead className="w-[15%]">
-                       <Button variant="ghost" onClick={() => handleSort('code')}>
-                         Codice
-                         {renderSortArrow('code')}
-                       </Button>
-                     </TableHead>
-                     <TableHead className="w-[15%] text-right">
-                       <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">
-                         Prezzo
-                         {renderSortArrow('price')}
-                       </Button>
-                     </TableHead>
-                     {userRole !== 'user' && (
-                        <TableHead className="w-[20%]">
-                          <Button variant="ghost" onClick={() => handleSort('serverId')}>
-                            Server
-                            {renderSortArrow('serverId')}
-                          </Button>
+                <div className="overflow-x-auto">
+                    <Table>
+                    <TableCaption className="py-4">
+                        {filteredProducts.length > 0
+                        ? `Mostrando ${filteredProducts.length} prodotto(i).`
+                        : ''}
+                    </TableCaption>
+                    <TableHeader className="sticky top-0 bg-secondary z-10">
+                        <TableRow>
+                        <TableHead style={{width: '300px'}}>
+                            <Button variant="ghost" onClick={() => handleSort('name')}>
+                            Nome
+                            {renderSortArrow('name')}
+                            </Button>
                         </TableHead>
-                     )}
-                     <TableHead className="w-[20%]">
-                       <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
-                         Aggiunto Da
-                         {renderSortArrow('addedByEmail')}
-                       </Button>
-                     </TableHead>
-                   </TableRow>
-                 </TableHeader>
-                 <TableBody>
-                   {filteredProducts.length > 0 ? (
-                     filteredProducts.map((product) => (
-                       <TableRow key={product.id}>
-                         <TableCell className="font-medium">{product.name}</TableCell>
-                         <TableCell>{product.code}</TableCell>
-                         <TableCell className="text-right">
-                           €{product.price.toFixed(2)}
-                         </TableCell>
-                         {userRole !== 'user' && (
-                            <TableCell>
-                                <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
-                                {product.serverId || 'N/D'}
-                                </Badge>
+                        <TableHead style={{width: '300px'}}>
+                            <Button variant="ghost" onClick={() => handleSort('code')}>
+                            Codice
+                            {renderSortArrow('code')}
+                            </Button>
+                        </TableHead>
+                        <TableHead style={{width: '300px'}} className="text-right">
+                            <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">
+                            Prezzo
+                            {renderSortArrow('price')}
+                            </Button>
+                        </TableHead>
+                        {userRole !== 'user' && (
+                            <TableHead style={{width: '300px'}}>
+                            <Button variant="ghost" onClick={() => handleSort('serverId')}>
+                                Server
+                                {renderSortArrow('serverId')}
+                            </Button>
+                            </TableHead>
+                        )}
+                        <TableHead style={{width: '300px'}}>
+                            <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
+                            Aggiunto Da
+                            {renderSortArrow('addedByEmail')}
+                            </Button>
+                        </TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {filteredProducts.length > 0 ? (
+                        filteredProducts.map((product) => (
+                            <TableRow key={product.id}>
+                            <TableCell className="font-medium">{product.name}</TableCell>
+                            <TableCell>{product.code}</TableCell>
+                            <TableCell className="text-right">
+                                €{product.price.toFixed(2)}
                             </TableCell>
-                         )}
-                         <TableCell>{product.addedByEmail || product.addedByUid || 'N/D'}</TableCell>
-                       </TableRow>
-                     ))
-                   ) : searchTerm ? (
-                     <TableRow>
-                       <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
-                         <div className="flex flex-col items-center justify-center gap-2">
-                           <PackageSearch className="h-8 w-8" />
-                           <span>Nessun risultato trovato per "{searchTerm}".</span>
-                         </div>
-                       </TableCell>
-                     </TableRow>
-                   ) : (
-                     <TableRow>
-                       <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
-                         <div className="flex flex-col items-center justify-center gap-2">
-                           <Info className="h-8 w-8" />
-                           <span>La lista è attualmente vuota.</span>
-                         </div>
-                       </TableCell>
-                     </TableRow>
-                   )}
-                 </TableBody>
-               </Table>
+                            {userRole !== 'user' && (
+                                <TableCell>
+                                    <Badge variant={product.serverId === 'local' ? 'secondary' : 'outline'}>
+                                    {product.serverId || 'N/D'}
+                                    </Badge>
+                                </TableCell>
+                            )}
+                            <TableCell>{product.addedByEmail || product.addedByUid || 'N/D'}</TableCell>
+                            </TableRow>
+                        ))
+                        ) : searchTerm ? (
+                        <TableRow>
+                            <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                                <PackageSearch className="h-8 w-8" />
+                                <span>Nessun risultato trovato per "{searchTerm}".</span>
+                            </div>
+                            </TableCell>
+                        </TableRow>
+                        ) : (
+                        <TableRow>
+                            <TableCell colSpan={userRole !== 'user' ? 5 : 4} className="h-24 text-center text-muted-foreground">
+                            <div className="flex flex-col items-center justify-center gap-2">
+                                <Info className="h-8 w-8" />
+                                <span>La lista è attualmente vuota.</span>
+                            </div>
+                            </TableCell>
+                        </TableRow>
+                        )}
+                    </TableBody>
+                    </Table>
+                </div>
              </ScrollArea>
            )}
         </CardContent>

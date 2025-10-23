@@ -206,85 +206,87 @@ export default function AdminProductsList() {
         />
       </div>
       <ScrollArea className="h-[260px] rounded-md border">
-        <Table>
-          <TableCaption className="py-4">
-            {filteredAndSortedAdminProducts.length > 0
-              ? `Mostrando ${filteredAndSortedAdminProducts.length} dei tuoi prodotti.`
-              : adminSearchTerm && filteredAndSortedAdminProducts.length === 0
-              ? '' 
-              : 'Non hai ancora aggiunto nessun prodotto.'}
-          </TableCaption>
-          <TableHeader className="sticky top-0 bg-secondary z-10">
-            <TableRow>
-              <TableHead className="w-[30%]">
-                 <Button variant="ghost" onClick={() => handleSort('name')}>Nome {renderSortArrow('name')}</Button>
-              </TableHead>
-              <TableHead className="w-[15%]">
-                 <Button variant="ghost" onClick={() => handleSort('code')}>Codice {renderSortArrow('code')}</Button>
-              </TableHead>
-              <TableHead className="w-[15%]">
-                 <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">Prezzo {renderSortArrow('price')}</Button>
-              </TableHead>
-              <TableHead className="w-[20%]">
-                 <Button variant="ghost" onClick={() => handleSort('serverId')}>Server {renderSortArrow('serverId')}</Button>
-              </TableHead>
-              <TableHead className="w-[20%] text-center">Azioni</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAndSortedAdminProducts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <PackagePlus className="h-8 w-8" /> 
-                    <span>
-                      {adminSearchTerm 
-                        ? `Nessun prodotto trovato per "${adminSearchTerm}".` 
-                        : 'Nessun prodotto aggiunto da te.'}
-                    </span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredAndSortedAdminProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{product.code}</TableCell>
-                  <TableCell className="text-right">
-                    ${product.price.toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={'secondary'}>
-                      {product.serverId || 'N/A'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(product)}
-                          disabled={isUpdating || isDeleting}
-                          aria-label="Modifica prodotto"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => openDeleteDialog(product)}
-                          disabled={isUpdating || isDeleting}
-                          aria-label="Elimina prodotto"
-                        >
-                          {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        </Button>
-                    </div>
-                  </TableCell>
+        <div className="overflow-x-auto">
+            <Table>
+            <TableCaption className="py-4">
+                {filteredAndSortedAdminProducts.length > 0
+                ? `Mostrando ${filteredAndSortedAdminProducts.length} dei tuoi prodotti.`
+                : adminSearchTerm && filteredAndSortedAdminProducts.length === 0
+                ? '' 
+                : 'Non hai ancora aggiunto nessun prodotto.'}
+            </TableCaption>
+            <TableHeader className="sticky top-0 bg-secondary z-10">
+                <TableRow>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('name')}>Nome {renderSortArrow('name')}</Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('code')}>Codice {renderSortArrow('code')}</Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('price')} className="justify-end w-full">Prezzo {renderSortArrow('price')}</Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('serverId')}>Server {renderSortArrow('serverId')}</Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}} className="text-center">Azioni</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+                {filteredAndSortedAdminProducts.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <PackagePlus className="h-8 w-8" /> 
+                        <span>
+                        {adminSearchTerm 
+                            ? `Nessun prodotto trovato per "${adminSearchTerm}".` 
+                            : 'Nessun prodotto aggiunto da te.'}
+                        </span>
+                    </div>
+                    </TableCell>
+                </TableRow>
+                ) : (
+                filteredAndSortedAdminProducts.map((product) => (
+                    <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>{product.code}</TableCell>
+                    <TableCell className="text-right">
+                        ${product.price.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                        <Badge variant={'secondary'}>
+                        {product.serverId || 'N/A'}
+                        </Badge>
+                    </TableCell>
+                    <TableCell className="text-center">
+                        <div className="flex justify-center space-x-2">
+                            <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(product)}
+                            disabled={isUpdating || isDeleting}
+                            aria-label="Modifica prodotto"
+                            >
+                            <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => openDeleteDialog(product)}
+                            disabled={isUpdating || isDeleting}
+                            aria-label="Elimina prodotto"
+                            >
+                            {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                    </TableCell>
+                    </TableRow>
+                ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </ScrollArea>
       {editingProduct && (
         <EditProductDialog

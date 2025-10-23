@@ -1,3 +1,4 @@
+
 // src/components/super-admin-products-list.tsx
 'use client';
 
@@ -196,91 +197,92 @@ export default function SuperAdminProductsList() {
         />
       </div>
       <ScrollArea className="h-[400px] rounded-md border">
-        <Table>
-          <TableCaption>
-            {filteredAndSortedProducts.length > 0
-              ? `Mostrando ${filteredAndSortedProducts.length} prodotti nel sistema.`
-              : 'Nessun prodotto nel sistema o nessun risultato per la ricerca.'}
-          </TableCaption>
-          <TableHeader className="sticky top-0 bg-secondary z-10">
-            <TableRow>
-              <TableHead>
-                <Button variant="ghost" onClick={() => handleSort('name')}>
-                  Nome {renderSortArrow('name')}
-                </Button>
-              </TableHead>
-              <TableHead>
-                 <Button variant="ghost" onClick={() => handleSort('code')}>
-                  Codice {renderSortArrow('code')}
-                </Button>
-              </TableHead>
-              <TableHead>
-                 <Button variant="ghost" onClick={() => handleSort('price')}>
-                  Prezzo {renderSortArrow('price')}
-                </Button>
-              </TableHead>
-              <TableHead>
-                 <Button variant="ghost" onClick={() => handleSort('serverId')}>
-                  Shard {renderSortArrow('serverId')}
-                </Button>
-              </TableHead>
-              <TableHead>
-                 <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
-                  Aggiunto da {renderSortArrow('addedByEmail')}
-                </Button>
-              </TableHead>
-              <TableHead className="text-center">Azioni</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAndSortedProducts.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <Package className="h-8 w-8" /> 
-                    <span>
-                      {searchTerm 
-                        ? `Nessun prodotto trovato per "${searchTerm}".` 
-                        : 'Nessun prodotto nel sistema.'}
-                    </span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredAndSortedProducts.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{product.code}</TableCell>
-                  <TableCell>${product.price.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <Badge variant={'secondary'}>{product.serverId || 'N/A'}</Badge>
-                  </TableCell>
-                  <TableCell>{product.addedByEmail || 'N/A'}</TableCell>
-                  <TableCell className="text-center">
-                    <div className="flex justify-center space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(product)}
-                          disabled={isUpdating || isDeleting}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={() => openDeleteDialog(product)}
-                          disabled={isUpdating || isDeleting}
-                        >
-                          {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                        </Button>
-                    </div>
-                  </TableCell>
+        <div className="overflow-x-auto">
+            <Table>
+            <TableCaption>
+                {filteredAndSortedProducts.length > 0
+                ? `Mostrando ${filteredAndSortedProducts.length} prodotti nel sistema.`
+                : 'Nessun prodotto nel sistema o nessun risultato per la ricerca.'}
+            </TableCaption>
+            <TableHeader className="sticky top-0 bg-secondary z-10">
+                <TableRow>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('name')}>
+                    Nome {renderSortArrow('name')}
+                    </Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('code')}>
+                    Codice {renderSortArrow('code')}
+                    </Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('price')}>
+                    Prezzo {renderSortArrow('price')}
+                    </Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('serverId')}>
+                    Shard {renderSortArrow('serverId')}
+                    </Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}}>
+                    <Button variant="ghost" onClick={() => handleSort('addedByEmail')}>
+                    Aggiunto da {renderSortArrow('addedByEmail')}
+                    </Button>
+                </TableHead>
+                <TableHead style={{width: '300px'}} className="text-center">Azioni</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+                {filteredAndSortedProducts.length === 0 ? (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground">
+                        <Package className="h-8 w-8" /> 
+                        <span>
+                        {searchTerm 
+                            ? `Nessun prodotto trovato per "${searchTerm}".` 
+                            : 'Nessun prodotto nel sistema.'}
+                        </span>
+                    </div>
+                    </TableCell>
+                </TableRow>
+                ) : (
+                filteredAndSortedProducts.map((product) => (
+                    <TableRow key={product.id}>
+                    <TableCell className="font-medium">{product.name}</TableCell>
+                    <TableCell>{product.code}</TableCell>
+                    <TableCell>${product.price.toFixed(2)}</TableCell>
+                    <TableCell>
+                        <Badge variant={'secondary'}>{product.serverId || 'N/A'}</Badge>
+                    </TableCell>
+                    <TableCell>{product.addedByEmail || 'N/A'}</TableCell>
+                    <TableCell className="text-center">
+                        <div className="flex justify-center space-x-2">
+                            <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEdit(product)}
+                            disabled={isUpdating || isDeleting}
+                            >
+                            <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => openDeleteDialog(product)}
+                            disabled={isUpdating || isDeleting}
+                            >
+                            {isDeleting && productToDelete?.id === product.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                            </Button>                        </div>
+                    </TableCell>
+                    </TableRow>
+                ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </ScrollArea>
       {editingProduct && (
         <EditProductDialog
